@@ -46,11 +46,23 @@
    Replace ONLY these two values with the same values from your current NestFind Supabase code.
 ========================= */
 const SUPABASE_URL = "https://rjpzolccephzpbbqrbwq.supabase.co";
-const SUPABASE_REST_URL = "https://rjpzolccephzpbbqrbwq.supabase.co/rest/v1/";
-const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_okN3fziucg3ARPecOOSLn_wTvMYsVmM";
-const supabaseReady = SUPABASE_URL.startsWith('http') && SUPABASE_PUBLISHABLE_KEY.startsWith('sb_');
-const supabaseClient = supabaseReady ? window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY) : null;
 
+const SUPABASE_PUBLISHABLE_KEY =
+  "sb_publishable_okN3fziucg3ARPecOOSLnw_TvMYsVmM";
+
+const SUPABASE_REST_URL =
+  "https://rjpzolccephzpbbqrbwq.supabase.co/rest/v1/";
+
+const supabaseReady =
+  SUPABASE_URL.startsWith("https://") &&
+  SUPABASE_PUBLISHABLE_KEY.startsWith("sb_publishable_");
+
+const supabaseClient = supabaseReady
+  ? window.supabase.createClient(
+      SUPABASE_URL,
+      SUPABASE_PUBLISHABLE_KEY
+    )
+  : null;
 const seed=[
 {id:1,type:'Rent',title:'3 Bedroom Apartment',location:'Lekki, Lagos',price:3500000,period:'/ year',beds:3,baths:3,image:'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1000&q=85',verified:true,desc:'Beautiful 3 bedroom apartment in a secure estate with 24/7 security, good water supply, parking and close access to shops, schools and malls.'},
 {id:2,type:'Buy',title:'4 Bedroom Duplex',location:'Ajah, Lagos',price:95000000,period:'total',beds:4,baths:4,image:'https://images.unsplash.com/photo-1600585154526-990dced4db0d?auto=format&fit=crop&w=1000&q=85',verified:true,desc:'Spacious modern family duplex in a quiet estate with excellent access roads and parking.'},
