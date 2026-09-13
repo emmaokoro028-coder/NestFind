@@ -2812,6 +2812,9 @@ function openProperty(id) {
       video.className = 'detail-video-preview';
       video.src = p.videoUrl;
       video.controls = true;
+      video.muted = false;
+      video.defaultMuted = false;
+      video.volume = 1;
       video.playsInline = true;
       video.preload = 'auto';
       video.setAttribute('playsinline', '');
@@ -2835,6 +2838,9 @@ function openProperty(id) {
       video.addEventListener('waiting', retryPlayback);
       video.addEventListener('error', () => {
         console.warn('NestFind video playback error:', video.error);
+      });
+      video.addEventListener('loadedmetadata', () => {
+        try { video.muted = false; video.defaultMuted = false; video.volume = 1; } catch (e) {}
       });
       video.addEventListener('playing', () => {
         retryCount = 0;
