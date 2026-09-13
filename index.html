@@ -1670,6 +1670,12 @@ body {
   margin-top: 8px;
   font-weight: 500;
 }
+
+.otp-boxes { display:grid; grid-template-columns:repeat(6,1fr); gap:8px; margin-top:8px; }
+.otp-box { width:100%; height:56px; box-sizing:border-box; border:1px solid #dfe5e2; border-radius:14px; background:#f8faf9; color:#111827; text-align:center; font-size:24px; font-weight:700; outline:none; transition:border-color .2s ease, box-shadow .2s ease, background .2s ease, transform .1s ease; }
+.otp-box:focus { border-color:#0b7a5a; background:#fff; box-shadow:0 0 0 4px rgba(11,122,90,.12); transform:translateY(-1px); }
+.otp-box.filled { border-color:#0b7a5a; background:#f0faf6; }
+@media (max-width:420px) { .otp-boxes{gap:6px;} .otp-box{height:52px;font-size:22px;border-radius:12px;} }
 </style>
 </head>
 <body>
@@ -1728,9 +1734,17 @@ body {
           <input type="email" id="auth-email" placeholder="emma@gmail.com" required>
         </div>
         <div class="form-group" id="auth-otp-group" style="display:none">
-          <label>8-Digit Email Code</label>
-          <input type="text" id="auth-otp" placeholder="12345678" inputmode="numeric" autocomplete="one-time-code" maxlength="8" pattern="\d{8}">
-          <div style="font-size:12px;color:var(--text-muted);margin-top:6px">Check your email and enter the 8-digit code.</div>
+          <label>6-Digit Email Code</label>
+          <div class="otp-boxes" id="otp-boxes" aria-label="6-digit email verification code">
+            <input class="otp-box" maxlength="1" inputmode="numeric" autocomplete="one-time-code" aria-label="Digit 1">
+            <input class="otp-box" maxlength="1" inputmode="numeric" aria-label="Digit 2">
+            <input class="otp-box" maxlength="1" inputmode="numeric" aria-label="Digit 3">
+            <input class="otp-box" maxlength="1" inputmode="numeric" aria-label="Digit 4">
+            <input class="otp-box" maxlength="1" inputmode="numeric" aria-label="Digit 5">
+            <input class="otp-box" maxlength="1" inputmode="numeric" aria-label="Digit 6">
+          </div>
+          <input type="hidden" id="auth-otp">
+          <div style="font-size:12px;color:var(--text-muted);margin-top:8px">Enter the 6-digit code from your email.</div>
         </div>
         <div class="form-group">
           <label>Password</label>
@@ -3136,6 +3150,7 @@ function switchAuthTab(mode) {
   document.getElementById('auth-password').style.display = '';
   document.getElementById('auth-password').closest('.form-group').style.display = '';
   document.getElementById('auth-otp').value = '';
+  document.querySelectorAll('.otp-box').forEach(input => { input.value = ''; input.classList.remove('filled'); });
   document.getElementById('auth-submit').textContent = mode === 'signup' ? 'Create Account' : 'Sign In';
   document.getElementById('auth-error').style.display = 'none';
   document.getElementById('auth-success').style.display = 'none';
@@ -3150,8 +3165,8 @@ function showOtpStep(email) {
   document.getElementById('auth-email').disabled = true;
   document.getElementById('auth-password').closest('.form-group').style.display = 'none';
   document.getElementById('auth-submit').textContent = 'Verify Code';
-  showAuthSuccess(`We sent an 8-digit code to ${email}. Enter it below to finish creating your account.`);
-  setTimeout(() => document.getElementById('auth-otp').focus(), 50);
+  showAuthSuccess(`We sent a 6-digit code to ${email}. Enter it below to finish creating your account.`);
+  setTimeout(() => document.querySelector('.otp-box')?.focus(), 50);
 }
 
 function showAuthError(message) {
@@ -3166,13 +3181,47 @@ function showAuthSuccess(message) {
   el.style.display = 'block';
 }
 
+// Styled OTP input behavior
+document.addEventListener('input', (event) => {
+  const input = event.target.closest('.otp-box');
+  if (!input) return;
+  input.value = input.value.replace(/\D/g, '').slice(0, 1);
+  input.classList.toggle('filled', !!input.value);
+  if (input.value) {
+    const next = input.nextElementSibling;
+    if (next?.classList.contains('otp-box')) next.focus();
+  }
+  document.getElementById('auth-otp').value = Array.from(document.querySelectorAll('.otp-box')).map(el => el.value).join('');
+});
+
+document.addEventListener('keydown', (event) => {
+  const input = event.target.closest('.otp-box');
+  if (!input || event.key !== 'Backspace' || input.value) return;
+  const prev = input.previousElementSibling;
+  if (prev?.classList.contains('otp-box')) { prev.value = ''; prev.classList.remove('filled'); prev.focus(); }
+});
+
+document.addEventListener('paste', (event) => {
+  const input = event.target.closest('.otp-box');
+  if (!input) return;
+  const digits = (event.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 6);
+  if (!digits) return;
+  event.preventDefault();
+  const boxes = Array.from(document.querySelectorAll('.otp-box'));
+  boxes.forEach((box, i) => { box.value = digits[i] || ''; box.classList.toggle('filled', !!box.value); });
+  document.getElementById('auth-otp').value = digits;
+  boxes[Math.min(digits.length, boxes.length - 1)]?.focus();
+});
+
 async function handleAuth(event) {
   event.preventDefault();
   if (!supabaseClient) { showAuthError('Supabase is not connected.'); return; }
   const email = document.getElementById('auth-email').value.trim();
   const password = document.getElementById('auth-password').value;
   const name = document.getElementById('auth-name').value.trim();
-  const otp = document.getElementById('auth-otp').value.trim();
+  const otpBoxes = Array.from(document.querySelectorAll('.otp-box'));
+  const otp = otpBoxes.map(input => input.value).join('');
+  document.getElementById('auth-otp').value = otp;
   const button = document.getElementById('auth-submit');
   button.disabled = true;
   button.textContent = authMode === 'verify-otp' ? 'Verifying…' : 'Please wait…';
@@ -3198,7 +3247,7 @@ async function handleAuth(event) {
       pendingSignup = { email, password, name, userId: data.user.id };
       showOtpStep(email);
     } else if (authMode === 'verify-otp') {
-      if (!/^\d{8}$/.test(otp)) throw new Error('Enter the 8-digit code from your email.');
+      if (!/^\d{6}$/.test(otp)) throw new Error('Enter the 6-digit code from your email.');
       if (!pendingSignup) throw new Error('Your signup session expired. Please sign up again.');
       const { data, error } = await supabaseClient.auth.verifyOtp({ email: pendingSignup.email, token: otp, type: 'email' });
       if (error) throw error;
