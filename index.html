@@ -3198,7 +3198,7 @@ async function handleAuth(event) {
       pendingSignup = { email, password, name, userId: data.user.id };
       showOtpStep(email);
     } else if (authMode === 'verify-otp') {
-      if (!/^\\d{8}$/.test(otp)) throw new Error('Enter the 8-digit code from your email.');
+      if (!/^\d{8}$/.test(otp)) throw new Error('Enter the 8-digit code from your email.');
       if (!pendingSignup) throw new Error('Your signup session expired. Please sign up again.');
       const { data, error } = await supabaseClient.auth.verifyOtp({ email: pendingSignup.email, token: otp, type: 'email' });
       if (error) throw error;
