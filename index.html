@@ -3163,10 +3163,13 @@ async function handleAuth(event) {
       setTimeout(() => showScreen('home'), 250);
     } else {
       const { data, error } = await supabaseClient.auth.signUp({
-        email,
-        password,
-        options: { data: { full_name: name } }
-      });
+  email,
+  password,
+  options: {
+    data: { full_name: name },
+    emailRedirectTo: 'https://emmaokoro028-coder.github.io/NestFind/'
+  }
+});
       if (error) throw error;
       if (data.user) {
         currentUser = data.user;
