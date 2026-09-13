@@ -1313,6 +1313,69 @@ body {
   background: var(--bg);
 }
 .photo-add svg { width: 24px; height: 24px; }
+.media-upload-grid {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin-top:4px;
+}
+.media-upload-btn {
+  min-height:48px;
+  border:1px solid var(--border);
+  background:var(--surface);
+  color:var(--text);
+  border-radius:12px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  font-size:13px;
+  font-weight:700;
+  cursor:pointer;
+}
+.media-upload-btn:hover { border-color:var(--primary); background:var(--primary-light); }
+.media-upload-help {
+  font-size:11px;
+  color:var(--text-muted);
+  line-height:1.45;
+  margin-top:8px;
+}
+.media-file-chip {
+  position:relative;
+  width:110px;
+  border:1px solid var(--border);
+  border-radius:12px;
+  overflow:hidden;
+  background:var(--surface);
+}
+.media-file-chip img,
+.media-file-chip video {
+  display:block;
+  width:110px;
+  height:82px;
+  object-fit:cover;
+}
+.media-file-chip-name {
+  padding:6px 7px;
+  font-size:10px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.media-remove {
+  position:absolute;
+  right:5px;
+  top:5px;
+  width:23px;
+  height:23px;
+  border:0;
+  border-radius:50%;
+  background:#DC2626;
+  color:#fff;
+  font-weight:800;
+  cursor:pointer;
+}
+
 .add-publish-bar {
   position: absolute;
   bottom: 0;
@@ -2084,10 +2147,26 @@ body {
         </div>
         <div class="form-section-body">
           <div class="form-group">
-            <label>Image URL</label>
-            <input type="url" id="add-photo-url" placeholder="https://...">
+            <label>Property Photos</label>
+            <div class="media-upload-grid">
+              <button type="button" class="media-upload-btn" onclick="document.getElementById('property-image-input').click()">
+                <i data-lucide="image-plus"></i> Add Photos
+              </button>
+              <button type="button" class="media-upload-btn" onclick="document.getElementById('property-video-input').click()">
+                <i data-lucide="video"></i> Add Video
+              </button>
+            </div>
+            <input id="property-image-input" type="file" accept="image/*" multiple hidden onchange="handlePropertyImages(event)">
+            <input id="property-video-input" type="file" accept="video/*" hidden onchange="handlePropertyVideo(event)">
+            <div class="media-upload-help">Choose photos or a video directly from your phone, tablet, or computer. Images up to 10 MB each; video up to 50 MB.</div>
           </div>
-          <button type="button" class="btn-outline" style="height:40px;font-size:13px;margin-bottom:10px" onclick="addPhotoPreview()">Add Photo</button>
+
+          <div class="form-group">
+            <label>Or add an image URL</label>
+            <input type="url" id="add-photo-url" placeholder="https://...">
+            <button type="button" class="btn-outline" style="height:40px;font-size:13px;margin-top:8px" onclick="addPhotoPreview()">Add Image URL</button>
+          </div>
+
           <div class="photo-previews" id="photo-previews"></div>
         </div>
       </div>
@@ -2493,6 +2572,8 @@ let searchType = 'all';
 let searchSort = 'recommended';
 let selectedMapProperty = null;
 let photoUrls = [];
+let photoFiles = [];
+let videoFile = null;
 let authMode = 'signin';
 let pendingSignup = null;
 let otpResendTimer = null;
@@ -2546,7 +2627,16 @@ function showScreen(id) {
   if (id === 'messages') renderConversations();
   if (id === 'profile') updateProfileCounts();
   if (id === 'map') renderMap();
-  if (id === 'add') { photoUrls = []; document.getElementById('photo-previews').innerHTML = ''; }
+  if (id === 'add') {
+    photoUrls = [];
+    photoFiles = [];
+    videoFile = null;
+    const imageInput = document.getElementById('property-image-input');
+    const videoInput = document.getElementById('property-video-input');
+    if (imageInput) imageInput.value = '';
+    if (videoInput) videoInput.value = '';
+    document.getElementById('photo-previews').innerHTML = '';
+  }
 }
 
 function goBack() {
@@ -2927,15 +3017,96 @@ function addPhotoPreview() {
   renderPhotoPreviews();
 }
 
+function handlePropertyImages(event) {
+  const files = Array.from(event.target.files || []);
+  if (!files.length) return;
+
+  for (const file of files) {
+    if (!file.type.startsWith('image/')) {
+      toast(`${file.name} is not an image.`);
+      continue;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast(`${file.name} is larger than 10 MB.`);
+      continue;
+    }
+    photoFiles.push(file);
+  }
+
+  event.target.value = '';
+  renderPhotoPreviews();
+}
+
+function handlePropertyVideo(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  if (!file.type.startsWith('video/')) {
+    toast('Please choose a video file.');
+    event.target.value = '';
+    return;
+  }
+  if (file.size > 50 * 1024 * 1024) {
+    toast('Video must be 50 MB or smaller.');
+    event.target.value = '';
+    return;
+  }
+
+  videoFile = file;
+  event.target.value = '';
+  renderPhotoPreviews();
+}
+
+function removePhotoFile(index) {
+  photoFiles.splice(index, 1);
+  renderPhotoPreviews();
+}
+
+function removePhotoUrl(index) {
+  photoUrls.splice(index, 1);
+  renderPhotoPreviews();
+}
+
+function removeVideoFile() {
+  videoFile = null;
+  renderPhotoPreviews();
+}
+
 function renderPhotoPreviews() {
   const box = document.getElementById('photo-previews');
   if (!box) return;
-  box.innerHTML = photoUrls.map((url, i) => `
-    <div style="position:relative">
-      <img class="photo-preview" src="${escapeHtml(url)}" alt="Property photo" onerror="this.style.opacity='.35'">
-      <button type="button" onclick="photoUrls.splice(${i},1);renderPhotoPreviews()" style="position:absolute;right:-5px;top:-5px;width:22px;height:22px;border:0;border-radius:50%;background:#DC2626;color:#fff;font-weight:800">×</button>
+
+  const imageCards = photoFiles.map((file, i) => {
+    const url = URL.createObjectURL(file);
+    return `
+      <div class="media-file-chip">
+        <img src="${url}" alt="Selected property photo">
+        <button type="button" class="media-remove" onclick="removePhotoFile(${i})">×</button>
+        <div class="media-file-chip-name">${escapeHtml(file.name)}</div>
+      </div>
+    `;
+  }).join('');
+
+  const urlCards = photoUrls.map((url, i) => `
+    <div class="media-file-chip">
+      <img src="${escapeHtml(url)}" alt="Property photo" onerror="this.style.opacity='.35'">
+      <button type="button" class="media-remove" onclick="removePhotoUrl(${i})">×</button>
+      <div class="media-file-chip-name">Image URL</div>
     </div>
   `).join('');
+
+  const videoCard = videoFile ? (() => {
+    const url = URL.createObjectURL(videoFile);
+    return `
+      <div class="media-file-chip">
+        <video src="${url}" muted playsinline controls></video>
+        <button type="button" class="media-remove" onclick="removeVideoFile()">×</button>
+        <div class="media-file-chip-name">${escapeHtml(videoFile.name)}</div>
+      </div>
+    `;
+  })() : '';
+
+  box.innerHTML = imageCards + urlCards + videoCard;
 }
 
 function selectedListingType() {
@@ -2950,6 +3121,48 @@ function periodForType(type) {
 
 function typeLabel(type) {
   return type === 'buy' ? 'buy' : type;
+}
+
+
+function safeStorageName(name) {
+  return String(name || 'file')
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, '-')
+    .replace(/-+/g, '-')
+    .slice(0, 100);
+}
+
+async function uploadPropertyMedia(file, folder) {
+  if (!supabaseClient || !currentUser) throw new Error('Supabase is not connected.');
+  const ext = (file.name.split('.').pop() || 'bin').toLowerCase();
+  const filename = `${Date.now()}-${crypto.randomUUID()}.${ext}`;
+  const path = `properties/${currentUser.id}/${folder}/${filename}`;
+
+  const { error } = await supabaseClient.storage
+    .from('property-media')
+    .upload(path, file, {
+      cacheControl: '3600',
+      upsert: false,
+      contentType: file.type
+    });
+
+  if (error) throw error;
+
+  return supabaseClient.storage.from('property-media').getPublicUrl(path).data.publicUrl;
+}
+
+async function uploadSelectedMedia() {
+  const uploadedPhotos = [];
+  for (const file of photoFiles) {
+    uploadedPhotos.push(await uploadPropertyMedia(file, 'images'));
+  }
+
+  let uploadedVideo = '';
+  if (videoFile) {
+    uploadedVideo = await uploadPropertyMedia(videoFile, 'videos');
+  }
+
+  return { uploadedPhotos, uploadedVideo };
 }
 
 async function publishListing() {
@@ -2993,7 +3206,8 @@ async function publishListing() {
     bathrooms: baths,
     parking,
     description,
-    photos,
+    photos: photoUrls.length ? [...photoUrls] : [fallbackImage],
+    video_url: '',
     amenities: ['Security', 'Water', ...(parking ? ['Parking'] : [])],
     is_verified: false,
     is_featured: false,
@@ -3016,6 +3230,12 @@ async function publishListing() {
       email: currentUser.email || '',
       phone: phone || currentUser.user_metadata?.phone || ''
     });
+
+    toast('Uploading property media…');
+    const { uploadedPhotos, uploadedVideo } = await uploadSelectedMedia();
+    listing.photos = [...uploadedPhotos, ...photoUrls];
+    if (!listing.photos.length) listing.photos = [fallbackImage];
+    listing.video_url = uploadedVideo || '';
 
     const { data, error } = await supabaseClient.from('properties').insert(listing).select().single();
     if (error) throw error;
@@ -3046,6 +3266,12 @@ function resetListingForm() {
   document.getElementById('add-baths').value = '2';
   document.getElementById('add-parking').value = '1';
   photoUrls = [];
+  photoFiles = [];
+  videoFile = null;
+  const imageInput = document.getElementById('property-image-input');
+  const videoInput = document.getElementById('property-video-input');
+  if (imageInput) imageInput.value = '';
+  if (videoInput) videoInput.value = '';
   renderPhotoPreviews();
 }
 
@@ -3403,6 +3629,7 @@ function dbPropertyToApp(row) {
     images: photos.length ? photos : ['https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&q=80'],
     description: row.description || '',
     amenities: Array.isArray(row.amenities) ? row.amenities : [],
+    videoUrl: row.video_url || '',
     owner: 'Property Owner',
     ownerAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&q=80',
     ownerId: row.owner_id,
@@ -3430,7 +3657,7 @@ async function loadSupabaseProperties() {
   try {
     const { data, error } = await supabaseClient
       .from('properties')
-      .select('id,owner_id,title,listing_type,property_type,location,city,price,price_period,bedrooms,bathrooms,parking,description,photos,amenities,is_verified,is_featured,status,created_at')
+      .select('id,owner_id,title,listing_type,property_type,location,city,price,price_period,bedrooms,bathrooms,parking,description,photos,video_url,amenities,is_verified,is_featured,status,created_at')
       .eq('status', 'active')
       .order('created_at', { ascending: false });
     if (error) throw error;
