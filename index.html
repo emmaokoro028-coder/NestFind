@@ -2186,7 +2186,7 @@ body {
             </div>
             <input id="property-image-input" type="file" accept="image/*" multiple hidden onchange="handlePropertyImages(event)">
             <input id="property-video-input" type="file" accept="video/*" hidden onchange="handlePropertyVideo(event)">
-            <div class="media-upload-help">Choose photos or a video directly from your phone, tablet, or computer. Images up to 10 MB each. Videos up to 50 MB are available to all members. Videos over 50 MB require NestFind Premium.</div>
+            <div class="media-upload-help">Choose photos or a video directly from your phone, tablet, or computer. Images up to 10 MB each. Videos up to 50 MB are available to all members. Videos over 50 MB require NestFind Premium (₦10,000/month or ₦120,000/year).</div>
           </div>
 
           <div class="form-group">
@@ -2356,26 +2356,28 @@ body {
   </div>
 
 
-  <!-- ========== NESTFIND APP ACCESS MODAL ========== -->
-  <div class="modal-overlay" id="app-access-modal">
+  <!-- ========== MESSAGING ACCESS MODAL ========== -->
+  <div class="modal-overlay" id="message-access-modal">
     <div class="modal-sheet" style="position:relative">
       <div class="modal-handle"></div>
-      <div class="modal-title">Welcome to NestFind</div>
+      <button class="modal-close" onclick="closeModal('message-access-modal')"><i data-lucide="x"></i></button>
+      <div class="modal-title">Message Property Owners</div>
       <div class="premium-hero">
-        <h3>NestFind Access</h3>
-        <p>All NestFind members pay a one-time <strong>₦5,000</strong> access fee to use the marketplace, whether you are searching for a property or listing one.</p>
+        <h3 id="message-access-title">Your 7-day free messaging trial has ended</h3>
+        <p id="message-access-description">Pay ₦2,000 to message any property owner on NestFind for 7 days.</p>
         <div class="premium-feature-list">
-          <div class="premium-feature"><i data-lucide="search"></i><span>Search and compare properties.</span></div>
-          <div class="premium-feature"><i data-lucide="message-circle"></i><span>Chat with owners and arrange viewings.</span></div>
-          <div class="premium-feature"><i data-lucide="plus-circle"></i><span>List your own property after paying the ₦10,000 publication fee.</span></div>
+          <div class="premium-feature"><i data-lucide="message-circle"></i><span>Message any property owner on NestFind.</span></div>
+          <div class="premium-feature"><i data-lucide="calendar"></i><span>Chat before arranging a viewing or meeting.</span></div>
+          <div class="premium-feature"><i data-lucide="shield-check"></i><span>NestFind never collects or transfers rent or property-sale payments.</span></div>
         </div>
       </div>
       <div class="payment-summary">
-        <div class="payment-summary-row"><span>NestFind app access</span><strong>₦5,000</strong></div>
-        <div class="payment-summary-row total"><span>Total</span><span>₦5,000</span></div>
+        <div class="payment-summary-row"><span>Messaging access</span><strong>₦2,000</strong></div>
+        <div class="payment-summary-row"><span>Access period</span><span>7 days</span></div>
+        <div class="payment-summary-row total"><span>Total</span><span>₦2,000</span></div>
       </div>
-      <button class="btn-primary" onclick="payForAppAccess()"><i data-lucide="lock-keyhole"></i> Pay ₦5,000 & Start Using NestFind</button>
-      <div class="payment-note">Payment is processed securely through Paystack. NestFind does not see or store your card details.</div>
+      <button class="btn-primary" onclick="payForMessagingAccess()"><i data-lucide="lock-keyhole"></i> Pay ₦2,000 & Start Messaging</button>
+      <div class="payment-note">New members get a 7-day free messaging trial. After the trial, messaging access costs ₦2,000 for 7 days. Payment is processed securely through Paystack.</div>
     </div>
   </div>
 
@@ -2387,7 +2389,7 @@ body {
       <div class="modal-title">NestFind Premium</div>
       <div class="premium-hero">
         <h3>Unlock more with Premium</h3>
-        <p id="premium-modal-message">Videos larger than 50 MB require NestFind Premium. Premium is separate from the ₦5,000 NestFind app access fee.</p>
+        <p id="premium-modal-message">Videos larger than 50 MB require NestFind Premium. Premium is separate from the ₦10,000 property publication fee and messaging access.</p>
         <div class="premium-feature-list">
           <div class="premium-feature"><i data-lucide="check-circle-2"></i><span>Upload and process videos larger than 50 MB.</span></div>
           <div class="premium-feature"><i data-lucide="check-circle-2"></i><span>Premium membership badge on your profile.</span></div>
@@ -2424,7 +2426,7 @@ body {
         <div class="payment-summary-row total"><span>Total</span><span>₦10,000</span></div>
       </div>
       <button class="btn-primary" onclick="payToPublishListing()"><i data-lucide="lock-keyhole"></i> Pay ₦10,000 & Publish</button>
-      <div class="payment-note">After successful payment verification, NestFind will upload your media and publish the property. This ₦10,000 publication fee is separate from the ₦5,000 NestFind app access fee and from any rent or sale payment between you and the property owner/buyer. Property rent/sale payments are still made directly between the parties.</div>
+      <div class="payment-note">After successful payment verification, NestFind will upload your media and publish the property. This ₦10,000 publication fee is separate from Premium, messaging access, and any rent or sale payment between the parties. Property rent/sale payments are still made directly between the parties.</div>
     </div>
   </div>
 
@@ -2685,15 +2687,18 @@ let allProperties = [...PROPERTIES, ...userListings];
 // Payment configuration. Add your Paystack PUBLIC key here. Never put a Paystack secret key in this file.
 const PAYSTACK_PUBLIC_KEY = 'PASTE_YOUR_PAYSTACK_PUBLIC_KEY_HERE';
 const PAYMENT_VERIFY_FUNCTION = 'verify-paystack-payment';
-const APP_ACCESS_FEE = 5000;
 const LISTING_PUBLICATION_FEE = 10000;
+const MESSAGE_ACCESS_FEE = 2000;
+const MESSAGE_ACCESS_DAYS = 7;
 const PREMIUM_PLANS = {
   monthly: { amount: 10000, days: 30, label: 'Monthly' },
   yearly: { amount: 120000, days: 365, label: 'Yearly' }
 };
 let pendingLargeVideoFile = null;
 let pendingListingPayload = null;
-let hasAppAccess = false;
+let messageAccessUntil = 0;
+let pendingChatConversationId = null;
+let pendingMessageNavigation = false;
 
 
 // ==================== UTILS ====================
@@ -2736,49 +2741,80 @@ function closePaymentModals() {
   document.getElementById('listing-payment-modal')?.classList.remove('active');
 }
 
-async function loadAppAccessStatus() {
+function getMessageTrialEndsAt() {
+  if (!currentUser?.created_at) return 0;
+  const created = new Date(currentUser.created_at).getTime();
+  if (!Number.isFinite(created)) return 0;
+  return created + MESSAGE_ACCESS_DAYS * 24 * 60 * 60 * 1000;
+}
+
+async function loadMessageAccessStatus() {
   if (!currentUser || !supabaseClient) {
-    hasAppAccess = false;
+    messageAccessUntil = 0;
     return false;
   }
+
+  const trialUntil = getMessageTrialEndsAt();
+  let paidUntil = 0;
   try {
     const { data, error } = await supabaseClient
-      .from('app_access_payments')
-      .select('id,reference,amount,status,created_at')
+      .from('message_access_payments')
+      .select('expires_at')
       .eq('user_id', currentUser.id)
       .eq('status', 'success')
-      .eq('amount', APP_ACCESS_FEE)
-      .order('created_at', { ascending: false })
+      .gt('expires_at', new Date().toISOString())
+      .order('expires_at', { ascending: false })
       .limit(1)
       .maybeSingle();
-    hasAppAccess = !error && !!data;
+    if (!error && data?.expires_at) paidUntil = new Date(data.expires_at).getTime();
   } catch (e) {
-    console.warn('Could not load NestFind access status:', e);
-    hasAppAccess = false;
+    console.warn('Could not load messaging access status:', e);
   }
-  return hasAppAccess;
+
+  messageAccessUntil = Math.max(trialUntil, paidUntil);
+  return messageAccessUntil > Date.now();
 }
 
-function openAppAccessModal() {
-  document.getElementById('app-access-modal')?.classList.add('active');
-  lucide.createIcons();
+function formatAccessRemaining(until) {
+  const remaining = Math.max(0, until - Date.now());
+  const days = Math.ceil(remaining / (24 * 60 * 60 * 1000));
+  if (days >= 1) return `${days} day${days === 1 ? '' : 's'}`;
+  const hours = Math.ceil(remaining / (60 * 60 * 1000));
+  return `${hours} hour${hours === 1 ? '' : 's'}`;
 }
 
-function closeAppAccessModal() {
-  document.getElementById('app-access-modal')?.classList.remove('active');
-}
-
-async function requireAppAccess() {
+async function requireMessageAccess() {
   if (!currentUser) {
     toast('Please sign in first.');
     showScreen('auth');
     return false;
   }
-  if (hasAppAccess) return true;
-  const ok = await loadAppAccessStatus();
+
+  const ok = await loadMessageAccessStatus();
   if (ok) return true;
-  openAppAccessModal();
+
+  const title = document.getElementById('message-access-title');
+  const desc = document.getElementById('message-access-description');
+  if (title) title.textContent = 'Your 7-day free messaging trial has ended';
+  if (desc) desc.textContent = 'Pay ₦2,000 to message any property owner on NestFind for 7 days.';
+  document.getElementById('message-access-modal')?.classList.add('active');
+  lucide.createIcons();
   return false;
+}
+
+function openMessageAccessModal() {
+  const trialUntil = getMessageTrialEndsAt();
+  const title = document.getElementById('message-access-title');
+  const desc = document.getElementById('message-access-description');
+  if (trialUntil > Date.now()) {
+    if (title) title.textContent = `Your free messaging trial is active (${formatAccessRemaining(trialUntil)} left)`;
+    if (desc) desc.textContent = 'You can message any property owner for free during your 7-day trial.';
+  } else {
+    if (title) title.textContent = 'Your 7-day free messaging trial has ended';
+    if (desc) desc.textContent = 'Pay ₦2,000 to message any property owner on NestFind for 7 days.';
+  }
+  document.getElementById('message-access-modal')?.classList.add('active');
+  lucide.createIcons();
 }
 
 async function startPaystackPayment(purpose, amount, metadata = {}) {
@@ -2817,11 +2853,19 @@ async function startPaystackPayment(purpose, amount, metadata = {}) {
         if (error) throw error;
         if (!data?.verified) throw new Error(data?.message || 'Payment could not be verified.');
 
-        if (purpose === 'access') {
-          hasAppAccess = true;
-          localStorage.setItem('nf_app_access', '1');
-          closeAppAccessModal();
-          toast('Payment confirmed. Welcome to NestFind.');
+        if (purpose === 'messaging') {
+          await loadMessageAccessStatus();
+          closeModal('message-access-modal');
+          toast('Messaging access activated for 7 days.');
+          if (pendingChatConversationId) {
+            const chatId = pendingChatConversationId;
+            pendingChatConversationId = null;
+            await openChat(chatId);
+          } else if (pendingMessageNavigation) {
+            pendingMessageNavigation = false;
+            showScreen('messages');
+            updateBottomNav('messages');
+          }
         } else if (purpose === 'premium') {
           const days = PREMIUM_PLANS[metadata.plan]?.days || 30;
           const currentUntil = Number(localStorage.getItem('nf_premium_until') || 0);
@@ -2860,8 +2904,8 @@ async function startPaystackPayment(purpose, amount, metadata = {}) {
   });
 }
 
-function payForAppAccess() {
-  startPaystackPayment('access', APP_ACCESS_FEE, { access: 'nestfind' });
+function payForMessagingAccess() {
+  startPaystackPayment('messaging', MESSAGE_ACCESS_FEE, { access: 'messaging', duration_days: MESSAGE_ACCESS_DAYS });
 }
 
 function subscribePremium(plan) {
@@ -2875,7 +2919,6 @@ async function payToPublishListing() {
     toast('Please complete the property details first.');
     return;
   }
-  if (!(await requireAppAccess())) return;
   startPaystackPayment('listing', LISTING_PUBLICATION_FEE, { property_title: pendingListingPayload.title });
 }
 
@@ -2941,7 +2984,11 @@ function enterApp() {
 }
 
 async function navTo(target) {
-  if (target !== 'home' && !(await requireAppAccess())) return;
+  if (target === 'messages') {
+    if (!currentUser) { toast('Please sign in first.'); showScreen('auth'); return; }
+    if (!(await requireMessageAccess())) { pendingMessageNavigation = true; return; }
+  }
+  if (target === 'add' && !currentUser) { toast('Please sign in before adding a property.'); showScreen('auth'); return; }
   if (target === 'home') showScreen('home');
   else if (target === 'search') showScreen('search');
   else if (target === 'add') showScreen('add');
@@ -3282,9 +3329,13 @@ function renderConversations() {
 
 function filterConversations() { renderConversations(); }
 
-function openChat(convId) {
+async function openChat(convId) {
   const conv = conversations.find(c => c.id === convId);
   if (!conv) return;
+  if (!(await requireMessageAccess())) {
+    pendingChatConversationId = convId;
+    return;
+  }
   currentChatId = convId;
   currentChatPropertyId = conv.propertyId;
   conv.unread = false;
@@ -3724,8 +3775,6 @@ async function publishListing() {
     return;
   }
 
-  if (!(await requireAppAccess())) return;
-
   const title = document.getElementById('add-title').value.trim();
   const propType = document.getElementById('add-prop-type').value;
   const beds = Number(document.getElementById('add-beds').value || 0);
@@ -3840,6 +3889,10 @@ function resetListingForm() {
 
 // ==================== PROFILE ====================
 function updateProfileCounts() {
+  loadMessageAccessStatus().then(() => {
+    const msgEl = document.getElementById('count-messages');
+    if (msgEl) msgEl.textContent = messageAccessUntil > Date.now() ? `Messaging active · ${formatAccessRemaining(messageAccessUntil)} left` : '7-day free trial · ₦2,000 / 7 days after trial';
+  });
   updateMembershipBadge();
   const own = currentUser ? allProperties.filter(p => String(p.ownerId || '') === String(currentUser.id)).length : userListings.length;
   const saved = favorites.length;
@@ -4280,10 +4333,10 @@ async function initNestFind() {
       updateProfileUI();
       loadPremiumStatus();
       if (currentUser) {
-        loadAppAccessStatus().then(access => { if (!access) openAppAccessModal(); });
+        loadMessageAccessStatus();
       } else {
-        hasAppAccess = false;
-        closeAppAccessModal();
+        messageAccessUntil = 0;
+        closeModal('message-access-modal');
       }
     });
     await loadSupabaseProperties();
@@ -4291,8 +4344,7 @@ async function initNestFind() {
   if (currentUser) {
     await loadCurrentUserData();
     await loadPremiumStatus();
-    await loadAppAccessStatus();
-    if (!hasAppAccess) openAppAccessModal();
+    await loadMessageAccessStatus();
   }
   lucide.createIcons();
 }
