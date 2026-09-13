@@ -2364,7 +2364,7 @@ body {
       <div class="modal-title">Message Property Owners</div>
       <div class="premium-hero">
         <h3 id="message-access-title">Your 7-day free messaging trial has ended</h3>
-        <p id="message-access-description">Pay ₦2,000 to message any property owner on NestFind for 7 days.</p>
+        <p id="message-access-description">Pay ₦2,000 once to unlock messaging with any property owner on NestFind.</p>
         <div class="premium-feature-list">
           <div class="premium-feature"><i data-lucide="message-circle"></i><span>Message any property owner on NestFind.</span></div>
           <div class="premium-feature"><i data-lucide="calendar"></i><span>Chat before arranging a viewing or meeting.</span></div>
@@ -2373,11 +2373,11 @@ body {
       </div>
       <div class="payment-summary">
         <div class="payment-summary-row"><span>Messaging access</span><strong>₦2,000</strong></div>
-        <div class="payment-summary-row"><span>Access period</span><span>7 days</span></div>
+        <div class="payment-summary-row"><span>Access</span><span>Permanent</span></div>
         <div class="payment-summary-row total"><span>Total</span><span>₦2,000</span></div>
       </div>
       <button class="btn-primary" onclick="payForMessagingAccess()"><i data-lucide="lock-keyhole"></i> Pay ₦2,000 & Start Messaging</button>
-      <div class="payment-note">New members get a 7-day free messaging trial. After the trial, messaging access costs ₦2,000 for 7 days. Payment is processed securely through Paystack.</div>
+      <div class="payment-note">New members get a 7-day free messaging trial. After the trial, a one-time ₦2,000 payment permanently unlocks messaging with any property owner. Payment is processed securely through Paystack.</div>
     </div>
   </div>
 
@@ -2689,7 +2689,7 @@ const PAYSTACK_PUBLIC_KEY = 'PASTE_YOUR_PAYSTACK_PUBLIC_KEY_HERE';
 const PAYMENT_VERIFY_FUNCTION = 'verify-paystack-payment';
 const LISTING_PUBLICATION_FEE = 10000;
 const MESSAGE_ACCESS_FEE = 2000;
-const MESSAGE_ACCESS_DAYS = 7;
+const MESSAGE_TRIAL_DAYS = 7;
 const PREMIUM_PLANS = {
   monthly: { amount: 10000, days: 30, label: 'Monthly' },
   yearly: { amount: 120000, days: 365, label: 'Yearly' }
@@ -2745,7 +2745,7 @@ function getMessageTrialEndsAt() {
   if (!currentUser?.created_at) return 0;
   const created = new Date(currentUser.created_at).getTime();
   if (!Number.isFinite(created)) return 0;
-  return created + MESSAGE_ACCESS_DAYS * 24 * 60 * 60 * 1000;
+  return created + MESSAGE_TRIAL_DAYS * 24 * 60 * 60 * 1000;
 }
 
 async function loadMessageAccessStatus() {
@@ -2762,11 +2762,13 @@ async function loadMessageAccessStatus() {
       .select('expires_at')
       .eq('user_id', currentUser.id)
       .eq('status', 'success')
-      .gt('expires_at', new Date().toISOString())
-      .order('expires_at', { ascending: false })
+      .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
-    if (!error && data?.expires_at) paidUntil = new Date(data.expires_at).getTime();
+    if (!error && data) {
+      // A verified ₦2,000 messaging payment permanently unlocks messaging.
+      paidUntil = data.expires_at ? new Date(data.expires_at).getTime() : Number.POSITIVE_INFINITY;
+    }
   } catch (e) {
     console.warn('Could not load messaging access status:', e);
   }
@@ -2796,7 +2798,7 @@ async function requireMessageAccess() {
   const title = document.getElementById('message-access-title');
   const desc = document.getElementById('message-access-description');
   if (title) title.textContent = 'Your 7-day free messaging trial has ended';
-  if (desc) desc.textContent = 'Pay ₦2,000 to message any property owner on NestFind for 7 days.';
+  if (desc) desc.textContent = 'Pay ₦2,000 once to unlock messaging with any property owner on NestFind.';
   document.getElementById('message-access-modal')?.classList.add('active');
   lucide.createIcons();
   return false;
@@ -2811,7 +2813,7 @@ function openMessageAccessModal() {
     if (desc) desc.textContent = 'You can message any property owner for free during your 7-day trial.';
   } else {
     if (title) title.textContent = 'Your 7-day free messaging trial has ended';
-    if (desc) desc.textContent = 'Pay ₦2,000 to message any property owner on NestFind for 7 days.';
+    if (desc) desc.textContent = 'Pay ₦2,000 once to unlock messaging with any property owner on NestFind.';
   }
   document.getElementById('message-access-modal')?.classList.add('active');
   lucide.createIcons();
@@ -2856,7 +2858,7 @@ async function startPaystackPayment(purpose, amount, metadata = {}) {
         if (purpose === 'messaging') {
           await loadMessageAccessStatus();
           closeModal('message-access-modal');
-          toast('Messaging access activated for 7 days.');
+          toast('Messaging access activated permanently.');
           if (pendingChatConversationId) {
             const chatId = pendingChatConversationId;
             pendingChatConversationId = null;
@@ -2905,7 +2907,7 @@ async function startPaystackPayment(purpose, amount, metadata = {}) {
 }
 
 function payForMessagingAccess() {
-  startPaystackPayment('messaging', MESSAGE_ACCESS_FEE, { access: 'messaging', duration_days: MESSAGE_ACCESS_DAYS });
+  startPaystackPayment('messaging', MESSAGE_ACCESS_FEE, { access: 'messaging', permanent: true });
 }
 
 function subscribePremium(plan) {
@@ -3891,7 +3893,7 @@ function resetListingForm() {
 function updateProfileCounts() {
   loadMessageAccessStatus().then(() => {
     const msgEl = document.getElementById('count-messages');
-    if (msgEl) msgEl.textContent = messageAccessUntil > Date.now() ? `Messaging active · ${formatAccessRemaining(messageAccessUntil)} left` : '7-day free trial · ₦2,000 / 7 days after trial';
+    if (msgEl) msgEl.textContent = messageAccessUntil > Date.now() ? (messageAccessUntil === Number.POSITIVE_INFINITY ? 'Messaging active · Permanent' : `Messaging active · ${formatAccessRemaining(messageAccessUntil)} left`) : '7-day free trial · ₦2,000 one-time after trial';
   });
   updateMembershipBadge();
   const own = currentUser ? allProperties.filter(p => String(p.ownerId || '') === String(currentUser.id)).length : userListings.length;
