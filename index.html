@@ -1675,6 +1675,11 @@ body {
 .otp-box { width:100%; height:56px; box-sizing:border-box; border:1px solid #dfe5e2; border-radius:14px; background:#f8faf9; color:#111827; text-align:center; font-size:24px; font-weight:700; outline:none; transition:border-color .2s ease, box-shadow .2s ease, background .2s ease, transform .1s ease; }
 .otp-box:focus { border-color:#0b7a5a; background:#fff; box-shadow:0 0 0 4px rgba(11,122,90,.12); transform:translateY(-1px); }
 .otp-box.filled { border-color:#0b7a5a; background:#f0faf6; }
+.otp-resend-wrap { text-align:center; margin-top:14px; }
+.otp-resend-btn { border:0; background:none; color:var(--primary); font-size:13px; font-weight:700; cursor:pointer; padding:6px 10px; border-radius:8px; }
+.otp-resend-btn:hover { background:var(--primary-light); }
+.otp-resend-btn:disabled { color:var(--text-muted); cursor:not-allowed; background:none; }
+.otp-countdown { color:var(--text-muted); font-size:12px; margin-left:4px; }
 @media (max-width:420px) { .otp-boxes{gap:6px;} .otp-box{height:52px;font-size:22px;border-radius:12px;} }
 </style>
 </head>
@@ -1745,6 +1750,10 @@ body {
           </div>
           <input type="hidden" id="auth-otp">
           <div style="font-size:12px;color:var(--text-muted);margin-top:8px">Enter the 6-digit code from your email.</div>
+          <div class="otp-resend-wrap">
+            <button type="button" class="otp-resend-btn" id="otp-resend-btn" onclick="resendOtp()">Resend Code</button>
+            <span class="otp-countdown" id="otp-countdown"></span>
+          </div>
         </div>
         <div class="form-group">
           <label>Password</label>
@@ -2486,6 +2495,8 @@ let selectedMapProperty = null;
 let photoUrls = [];
 let authMode = 'signin';
 let pendingSignup = null;
+let otpResendTimer = null;
+let otpResendSeconds = 0;
 let screenHistory = [];
 let allProperties = [...PROPERTIES, ...userListings];
 
@@ -3151,6 +3162,7 @@ function switchAuthTab(mode) {
   document.getElementById('auth-password').closest('.form-group').style.display = '';
   document.getElementById('auth-otp').value = '';
   document.querySelectorAll('.otp-box').forEach(input => { input.value = ''; input.classList.remove('filled'); });
+  resetOtpResendUI();
   document.getElementById('auth-submit').textContent = mode === 'signup' ? 'Create Account' : 'Sign In';
   document.getElementById('auth-error').style.display = 'none';
   document.getElementById('auth-success').style.display = 'none';
@@ -3166,6 +3178,7 @@ function showOtpStep(email) {
   document.getElementById('auth-password').closest('.form-group').style.display = 'none';
   document.getElementById('auth-submit').textContent = 'Verify Code';
   showAuthSuccess(`We sent a 6-digit code to ${email}. Enter it below to finish creating your account.`);
+  startOtpResendCountdown(60);
   setTimeout(() => document.querySelector('.otp-box')?.focus(), 50);
 }
 
@@ -3213,6 +3226,87 @@ document.addEventListener('paste', (event) => {
   boxes[Math.min(digits.length, boxes.length - 1)]?.focus();
 });
 
+
+function resetOtpResendUI() {
+  if (otpResendTimer) {
+    clearInterval(otpResendTimer);
+    otpResendTimer = null;
+  }
+  otpResendSeconds = 0;
+  const btn = document.getElementById('otp-resend-btn');
+  const countdown = document.getElementById('otp-countdown');
+  if (btn) {
+    btn.disabled = false;
+    btn.textContent = 'Resend Code';
+  }
+  if (countdown) countdown.textContent = '';
+}
+
+function startOtpResendCountdown(seconds) {
+  if (otpResendTimer) clearInterval(otpResendTimer);
+  otpResendSeconds = seconds;
+  const btn = document.getElementById('otp-resend-btn');
+  const countdown = document.getElementById('otp-countdown');
+  if (!btn || !countdown) return;
+  btn.disabled = true;
+  btn.textContent = 'Resend Code';
+  countdown.textContent = `(wait ${otpResendSeconds}s)`;
+
+  otpResendTimer = setInterval(() => {
+    otpResendSeconds -= 1;
+    if (otpResendSeconds <= 0) {
+      clearInterval(otpResendTimer);
+      otpResendTimer = null;
+      btn.disabled = false;
+      countdown.textContent = '';
+      return;
+    }
+    countdown.textContent = `(wait ${otpResendSeconds}s)`;
+  }, 1000);
+}
+
+async function resendOtp() {
+  if (!supabaseClient) {
+    showAuthError('Supabase is not connected.');
+    return;
+  }
+  if (!pendingSignup?.email) {
+    showAuthError('Your signup session expired. Please sign up again.');
+    return;
+  }
+  if (otpResendSeconds > 0) return;
+
+  const btn = document.getElementById('otp-resend-btn');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+  }
+  document.getElementById('auth-error').style.display = 'none';
+
+  try {
+    const { error } = await supabaseClient.auth.resend({
+      type: 'signup',
+      email: pendingSignup.email
+    });
+    if (error) throw error;
+
+    document.querySelectorAll('.otp-box').forEach(input => {
+      input.value = '';
+      input.classList.remove('filled');
+    });
+    document.getElementById('auth-otp').value = '';
+    showAuthSuccess(`A new 6-digit code was sent to ${pendingSignup.email}.`);
+    startOtpResendCountdown(60);
+    setTimeout(() => document.querySelector('.otp-box')?.focus(), 50);
+  } catch (err) {
+    showAuthError(err.message || 'Could not resend the code. Please try again.');
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Resend Code';
+    }
+  }
+}
+
 async function handleAuth(event) {
   event.preventDefault();
   if (!supabaseClient) { showAuthError('Supabase is not connected.'); return; }
@@ -3247,7 +3341,7 @@ async function handleAuth(event) {
       pendingSignup = { email, password, name, userId: data.user.id };
       showOtpStep(email);
     } else if (authMode === 'verify-otp') {
-      if (!/^\d{6}$/.test(otp)) throw new Error('Enter the 6-digit code from your email.');
+      if (!/^\d{6}$/.test(otp)) throw new Error('Enter all 6 digits from your email.');
       if (!pendingSignup) throw new Error('Your signup session expired. Please sign up again.');
       const { data, error } = await supabaseClient.auth.verifyOtp({ email: pendingSignup.email, token: otp, type: 'email' });
       if (error) throw error;
