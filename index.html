@@ -2609,7 +2609,7 @@ function saveState() {
 }
 
 function getProperty(id) {
-  return allProperties.find(p => p.id === id);
+  return allProperties.find(p => String(p.id) === String(id));
 }
 
 // ==================== NAVIGATION ====================
@@ -2682,7 +2682,7 @@ function propCardHTML(p) {
   const badgeClass = p.type === 'buy' ? 'badge sale' : 'badge';
   const badgeText = p.type === 'buy' ? 'For Sale' : p.type === 'hotel' ? 'Hotel' : p.type === 'shop' ? 'Shop' : p.type === 'room' ? 'Room' : 'For Rent';
   return `
-    <div class="prop-card" onclick="openProperty(${p.id})">
+    <div class="prop-card" onclick="openProperty(${JSON.stringify(String(p.id))})">
       <div class="prop-card-img">
         <img src="${p.image}" alt="${p.title}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=400&q=60'">
         <span class="${badgeClass}">${badgeText}</span>
@@ -2707,7 +2707,7 @@ function propListHTML(p) {
   const isFav = favorites.includes(p.id);
   const badgeText = p.type === 'buy' ? 'For Sale' : p.type === 'hotel' ? 'Hotel' : p.type === 'shop' ? 'Shop' : p.type === 'room' ? 'Room' : 'For Rent';
   return `
-    <div class="prop-list-card" onclick="openProperty(${p.id})">
+    <div class="prop-list-card" onclick="openProperty(${JSON.stringify(String(p.id))})">
       <div class="prop-list-img">
         <img src="${p.image}" alt="${p.title}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=400&q=60'">
         <span class="badge" style="font-size:10px;padding:2px 6px">${badgeText}</span>
@@ -2803,6 +2803,21 @@ function openProperty(id) {
   currentPropertyId = id;
   document.getElementById('detail-img').src = p.images?.[0] || p.image;
   document.getElementById('detail-counter').textContent = `1 / ${p.images?.length || 1}`;
+  const detailMedia = document.getElementById('detail-img')?.parentElement;
+  if (detailMedia) {
+    const oldVideo = detailMedia.querySelector('.detail-video-preview');
+    if (oldVideo) oldVideo.remove();
+    if (p.videoUrl) {
+      const video = document.createElement('video');
+      video.className = 'detail-video-preview';
+      video.src = p.videoUrl;
+      video.controls = true;
+      video.playsInline = true;
+      video.preload = 'metadata';
+      video.style.cssText = 'width:100%;max-height:240px;object-fit:cover;border-radius:16px;margin-top:10px;background:#111;';
+      detailMedia.appendChild(video);
+    }
+  }
   const favBtn = document.getElementById('detail-fav-btn');
   favBtn.classList.toggle('active', favorites.includes(id));
   favBtn.innerHTML = favorites.includes(id) ? '<i data-lucide="heart" fill="currentColor"></i>' : '<i data-lucide="heart"></i>';
