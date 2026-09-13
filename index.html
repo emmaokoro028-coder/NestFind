@@ -1727,6 +1727,11 @@ body {
           <label>Email</label>
           <input type="email" id="auth-email" placeholder="emma@gmail.com" required>
         </div>
+        <div class="form-group" id="auth-otp-group" style="display:none">
+          <label>8-Digit Email Code</label>
+          <input type="text" id="auth-otp" placeholder="12345678" inputmode="numeric" autocomplete="one-time-code" maxlength="8" pattern="\d{8}">
+          <div style="font-size:12px;color:var(--text-muted);margin-top:6px">Check your email and enter the 8-digit code.</div>
+        </div>
         <div class="form-group">
           <label>Password</label>
           <input type="password" id="auth-password" placeholder="••••••••" required minlength="6">
@@ -2466,6 +2471,7 @@ let searchSort = 'recommended';
 let selectedMapProperty = null;
 let photoUrls = [];
 let authMode = 'signin';
+let pendingSignup = null;
 let screenHistory = [];
 let allProperties = [...PROPERTIES, ...userListings];
 
@@ -3116,17 +3122,36 @@ function closeModal(id) { document.getElementById(id)?.classList.remove('active'
 
 // ==================== AUTH / SUPABASE ====================
 const SUPABASE_URL = 'https://rjpzolccephzpbbqrbwq.supabase.co';
-const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_okN3fziucg3ARPecOOSLnw_TvMYsVmM';
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_okN3fziucg3ARPecOOSLn_wTvMYsVmM';
 const supabaseClient = window.supabase?.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY) || null;
 
-  function switchAuthTab(mode) {
+function switchAuthTab(mode) {
   authMode = mode;
+  pendingSignup = null;
   document.getElementById('tab-signin').classList.toggle('active', mode === 'signin');
   document.getElementById('tab-signup').classList.toggle('active', mode === 'signup');
   document.getElementById('auth-name-group').style.display = mode === 'signup' ? 'block' : 'none';
+  document.getElementById('auth-otp-group').style.display = 'none';
+  document.getElementById('auth-email').disabled = false;
+  document.getElementById('auth-password').style.display = '';
+  document.getElementById('auth-password').closest('.form-group').style.display = '';
+  document.getElementById('auth-otp').value = '';
   document.getElementById('auth-submit').textContent = mode === 'signup' ? 'Create Account' : 'Sign In';
   document.getElementById('auth-error').style.display = 'none';
   document.getElementById('auth-success').style.display = 'none';
+}
+
+function showOtpStep(email) {
+  authMode = 'verify-otp';
+  document.getElementById('tab-signin').classList.remove('active');
+  document.getElementById('tab-signup').classList.add('active');
+  document.getElementById('auth-name-group').style.display = 'none';
+  document.getElementById('auth-otp-group').style.display = 'block';
+  document.getElementById('auth-email').disabled = true;
+  document.getElementById('auth-password').closest('.form-group').style.display = 'none';
+  document.getElementById('auth-submit').textContent = 'Verify Code';
+  showAuthSuccess(`We sent an 8-digit code to ${email}. Enter it below to finish creating your account.`);
+  setTimeout(() => document.getElementById('auth-otp').focus(), 50);
 }
 
 function showAuthError(message) {
@@ -3147,9 +3172,10 @@ async function handleAuth(event) {
   const email = document.getElementById('auth-email').value.trim();
   const password = document.getElementById('auth-password').value;
   const name = document.getElementById('auth-name').value.trim();
+  const otp = document.getElementById('auth-otp').value.trim();
   const button = document.getElementById('auth-submit');
   button.disabled = true;
-  button.textContent = 'Please wait…';
+  button.textContent = authMode === 'verify-otp' ? 'Verifying…' : 'Please wait…';
   document.getElementById('auth-error').style.display = 'none';
   document.getElementById('auth-success').style.display = 'none';
   try {
@@ -3161,34 +3187,34 @@ async function handleAuth(event) {
       await loadCurrentUserData();
       showAuthSuccess('Signed in successfully.');
       setTimeout(() => showScreen('home'), 250);
-    } else {
+    } else if (authMode === 'signup') {
       const { data, error } = await supabaseClient.auth.signUp({
-  email,
-  password,
-  options: {
-    data: { full_name: name },
-    emailRedirectTo: 'https://emmaokoro028-coder.github.io/NestFind/'
-  }
-});
+        email,
+        password,
+        options: { data: { full_name: name } }
+      });
       if (error) throw error;
-      if (data.user) {
-        currentUser = data.user;
-        localStorage.setItem('nf_user', JSON.stringify(currentUser));
-        const { error: profileError } = await supabaseClient.from('profiles').upsert({
-          id: data.user.id,
-          full_name: name || data.user.email?.split('@')[0] || 'NestFind Member',
-          email: data.user.email || email,
-          phone: ''
-        });
-        if (profileError) console.warn('Profile upsert:', profileError);
-        if (data.session) {
-          showAuthSuccess('Account created successfully.');
-          setTimeout(() => showScreen('home'), 250);
-        } else {
-          switchAuthTab('signin');
-          showAuthSuccess('Account created. Check your email to confirm your account, then sign in.');
-        }
-      }
+      if (!data.user) throw new Error('Account could not be created.');
+      pendingSignup = { email, password, name, userId: data.user.id };
+      showOtpStep(email);
+    } else if (authMode === 'verify-otp') {
+      if (!/^\\d{8}$/.test(otp)) throw new Error('Enter the 8-digit code from your email.');
+      if (!pendingSignup) throw new Error('Your signup session expired. Please sign up again.');
+      const { data, error } = await supabaseClient.auth.verifyOtp({ email: pendingSignup.email, token: otp, type: 'email' });
+      if (error) throw error;
+      currentUser = data.user;
+      localStorage.setItem('nf_user', JSON.stringify(currentUser));
+      const { error: profileError } = await supabaseClient.from('profiles').upsert({
+        id: currentUser.id,
+        full_name: pendingSignup.name || currentUser.email?.split('@')[0] || 'NestFind Member',
+        email: currentUser.email || pendingSignup.email,
+        phone: ''
+      });
+      if (profileError) console.warn('Profile upsert:', profileError);
+      pendingSignup = null;
+      await loadCurrentUserData();
+      showAuthSuccess('Account verified successfully. Welcome to NestFind!');
+      setTimeout(() => showScreen('home'), 500);
     }
     updateProfileUI();
     await loadSupabaseProperties();
@@ -3196,7 +3222,7 @@ async function handleAuth(event) {
     showAuthError(err.message || 'Authentication failed.');
   } finally {
     button.disabled = false;
-    button.textContent = authMode === 'signup' ? 'Create Account' : 'Sign In';
+    button.textContent = authMode === 'signup' ? 'Create Account' : (authMode === 'verify-otp' ? 'Verify Code' : 'Sign In');
   }
 }
 
