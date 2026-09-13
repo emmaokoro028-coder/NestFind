@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/lucide@latest"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/tus-js-client@4/dist/tus.min.js"></script>
 <style>
 :root {
   --primary: #0B6E4F;
@@ -3187,6 +3188,54 @@ async function uploadPropertyMedia(file, folder) {
   const filename = `${Date.now()}-${crypto.randomUUID()}.${ext}`;
   const path = `properties/${currentUser.id}/${folder}/${filename}`;
 
+  // Supabase recommends resumable TUS uploads for files larger than 6 MB.
+  // Use TUS for videos so a slow/interrupted connection can resume instead of
+  // restarting the entire upload.
+  if (folder === 'videos' && file.size > 6 * 1024 * 1024 && window.tus) {
+    const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
+    if (sessionError || !sessionData?.session?.access_token) {
+      throw new Error('Your sign-in session expired. Please sign in again.');
+    }
+
+    const projectRef = 'rjpzolccephzpbbqrbwq';
+    const endpoint = `https://${projectRef}.storage.supabase.co/storage/v1/upload/resumable`;
+
+    return await new Promise((resolve, reject) => {
+      const upload = new tus.Upload(file, {
+        endpoint,
+        retryDelays: [0, 3000, 5000, 10000, 20000],
+        headers: {
+          authorization: `Bearer ${sessionData.session.access_token}`,
+          'x-upsert': 'false'
+        },
+        uploadDataDuringCreation: true,
+        removeFingerprintOnSuccess: true,
+        chunkSize: 6 * 1024 * 1024,
+        metadata: {
+          bucketName: 'property-media',
+          objectName: path,
+          contentType: file.type || 'video/mp4',
+          cacheControl: '3600'
+        },
+        onError(error) {
+          console.error('NestFind resumable upload error:', error);
+          reject(error);
+        },
+        onProgress(bytesUploaded, bytesTotal) {
+          const pct = Math.round((bytesUploaded / bytesTotal) * 100);
+          const button = document.querySelector('#screen-add .add-publish-bar .btn-primary');
+          if (button) button.textContent = `Uploading video ${pct}%…`;
+        },
+        onSuccess() {
+          const publicUrl = supabaseClient.storage.from('property-media').getPublicUrl(path).data.publicUrl;
+          resolve(publicUrl);
+        }
+      });
+
+      upload.start();
+    });
+  }
+
   const { error } = await supabaseClient.storage
     .from('property-media')
     .upload(path, file, {
@@ -3196,24 +3245,24 @@ async function uploadPropertyMedia(file, folder) {
     });
 
   if (error) throw error;
-
   return supabaseClient.storage.from('property-media').getPublicUrl(path).data.publicUrl;
 }
-
 async function uploadSelectedMedia() {
   const uploadedPhotos = [];
-  for (const file of photoFiles) {
-    uploadedPhotos.push(await uploadPropertyMedia(file, 'images'));
+  if (photoFiles.length) {
+    const results = await Promise.all(photoFiles.map(file => uploadPropertyMedia(file, 'images')));
+    uploadedPhotos.push(...results);
   }
 
   let uploadedVideo = '';
   if (videoFile) {
+    const button = document.querySelector('#screen-add .add-publish-bar .btn-primary');
+    if (button) button.textContent = 'Uploading video…';
     uploadedVideo = await uploadPropertyMedia(videoFile, 'videos');
   }
 
   return { uploadedPhotos, uploadedVideo };
 }
-
 async function publishListing() {
   if (!currentUser) {
     toast('Please sign in before publishing.');
@@ -3280,7 +3329,7 @@ async function publishListing() {
       phone: phone || currentUser.user_metadata?.phone || ''
     });
 
-    toast('Uploading property media…');
+    toast(videoFile ? 'Uploading property media… Large videos may take a little while.' : 'Uploading property media…');
     const { uploadedPhotos, uploadedVideo } = await uploadSelectedMedia();
     listing.photos = [...uploadedPhotos, ...photoUrls];
     if (!listing.photos.length) listing.photos = [fallbackImage];
