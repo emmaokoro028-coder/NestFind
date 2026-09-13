@@ -2682,11 +2682,11 @@ function propCardHTML(p) {
   const badgeClass = p.type === 'buy' ? 'badge sale' : 'badge';
   const badgeText = p.type === 'buy' ? 'For Sale' : p.type === 'hotel' ? 'Hotel' : p.type === 'shop' ? 'Shop' : p.type === 'room' ? 'Room' : 'For Rent';
   return `
-    <div class="prop-card" onclick="openProperty(${JSON.stringify(String(p.id))})">
+    <div class="prop-card" onclick='openProperty(${JSON.stringify(String(p.id))})'>
       <div class="prop-card-img">
         <img src="${p.image}" alt="${p.title}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=400&q=60'">
         <span class="${badgeClass}">${badgeText}</span>
-        <button class="fav-btn ${isFav ? 'active' : ''}" onclick="event.stopPropagation(); toggleFavorite(${p.id}, this)">
+        <button class="fav-btn ${isFav ? 'active' : ''}" onclick="event.stopPropagation(); toggleFavorite(${JSON.stringify(String(p.id))}, this)">
           <i data-lucide="heart" ${isFav ? 'fill="currentColor"' : ''}></i>
         </button>
       </div>
@@ -2707,7 +2707,7 @@ function propListHTML(p) {
   const isFav = favorites.includes(p.id);
   const badgeText = p.type === 'buy' ? 'For Sale' : p.type === 'hotel' ? 'Hotel' : p.type === 'shop' ? 'Shop' : p.type === 'room' ? 'Room' : 'For Rent';
   return `
-    <div class="prop-list-card" onclick="openProperty(${JSON.stringify(String(p.id))})">
+    <div class="prop-list-card" onclick='openProperty(${JSON.stringify(String(p.id))})'>
       <div class="prop-list-img">
         <img src="${p.image}" alt="${p.title}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=400&q=60'">
         <span class="badge" style="font-size:10px;padding:2px 6px">${badgeText}</span>
@@ -2715,7 +2715,7 @@ function propListHTML(p) {
       <div class="prop-list-body">
         <div class="prop-list-top">
           <div class="prop-list-title">${p.title}</div>
-          <button class="prop-list-fav ${isFav ? 'active' : ''}" onclick="event.stopPropagation(); toggleFavorite(${p.id}, this)">
+          <button class="prop-list-fav ${isFav ? 'active' : ''}" onclick="event.stopPropagation(); toggleFavorite(${JSON.stringify(String(p.id))}, this)">
             <i data-lucide="heart" ${isFav ? 'fill="currentColor"' : ''}></i>
           </button>
         </div>
