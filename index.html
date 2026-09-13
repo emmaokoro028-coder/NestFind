@@ -10,6 +10,7 @@
 <script src="https://unpkg.com/lucide@latest"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/tus-js-client@4/dist/tus.min.js"></script>
+<script src="https://js.paystack.co/v2/inline.js"></script>
 <style>
 :root {
   --primary: #0B6E4F;
@@ -1667,6 +1668,32 @@ body {
 }
 
 /* ========== TOAST ========== */
+
+/* ========== PREMIUM & PAYMENT ========== */
+.premium-hero {
+  background: linear-gradient(135deg, #0B6E4F, #063E2D);
+  color: #fff;
+  border-radius: 16px;
+  padding: 18px;
+  margin-bottom: 16px;
+}
+.premium-hero h3 { font-size: 20px; margin-bottom: 5px; }
+.premium-hero p { font-size: 13px; opacity: .88; line-height: 1.5; }
+.plan-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 14px 0; }
+.plan-card { border: 1.5px solid var(--border); border-radius: 14px; padding: 14px; background: var(--card); }
+.plan-card.featured { border-color: var(--primary); box-shadow: 0 4px 16px rgba(11,110,79,.12); }
+.plan-name { font-size: 13px; font-weight: 700; color: var(--text-secondary); }
+.plan-price { font-size: 21px; font-weight: 800; color: var(--text); margin: 4px 0; }
+.plan-period { font-size: 11px; color: var(--text-muted); margin-bottom: 10px; }
+.plan-card .btn-primary { height: 44px; font-size: 13px; }
+.payment-summary { background: var(--bg); border-radius: 14px; padding: 14px; margin: 12px 0 16px; }
+.payment-summary-row { display:flex; justify-content:space-between; gap:12px; padding:5px 0; font-size:13px; }
+.payment-summary-row.total { margin-top:6px; padding-top:10px; border-top:1px solid var(--border); font-weight:800; font-size:16px; }
+.payment-note { font-size: 12px; color: var(--text-muted); line-height: 1.5; margin-top: 12px; }
+.premium-feature-list { display:grid; gap:8px; margin-top:12px; }
+.premium-feature { display:flex; gap:8px; align-items:flex-start; font-size:12px; color:rgba(255,255,255,.9); }
+.premium-feature svg { width:15px; height:15px; flex-shrink:0; }
+
 .toast {
   position: absolute;
   bottom: calc(var(--nav-height) + 20px + var(--safe-bottom));
@@ -2128,7 +2155,7 @@ body {
         <div class="form-section-body">
           <div class="form-group">
             <label>Price (₦) *</label>
-            <input type="number" id="add-price" placeholder="3500000" min="0">
+            <input type="number" id="add-price" placeholder="₦3,500,000" min="0">
           </div>
           <div class="form-group">
             <label>Price Period</label>
@@ -2159,7 +2186,7 @@ body {
             </div>
             <input id="property-image-input" type="file" accept="image/*" multiple hidden onchange="handlePropertyImages(event)">
             <input id="property-video-input" type="file" accept="video/*" hidden onchange="handlePropertyVideo(event)">
-            <div class="media-upload-help">Choose photos or a video directly from your phone, tablet, or computer. Images up to 10 MB each; video up to 50 MB.</div>
+            <div class="media-upload-help">Choose photos or a video directly from your phone, tablet, or computer. Images up to 10 MB each. Videos up to 50 MB are available to all members. Videos over 50 MB require NestFind Premium.</div>
           </div>
 
           <div class="form-group">
@@ -2212,7 +2239,7 @@ body {
         <img class="profile-avatar" id="profile-avatar" src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&q=80" alt="Profile" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%23E8F5F0%22 width=%22100%22 height=%22100%22/><text x=%2250%22 y=%2255%22 text-anchor=%22middle%22 fill=%22%230B6E4F%22 font-size=%2240%22>E</text></svg>'">
         <div class="profile-name" id="profile-name">Emma Okoro</div>
         <div class="profile-email" id="profile-email">emma@gmail.com</div>
-        <div class="premium-badge"><i data-lucide="crown"></i> Premium Member</div>
+        <div class="premium-badge" id="membership-badge"><i data-lucide="crown"></i> Free Member</div>
       </div>
       <div class="profile-menu">
         <div class="profile-menu-item" onclick="showMyListings()">
@@ -2247,7 +2274,7 @@ body {
           </div>
           <div class="profile-menu-arrow"><i data-lucide="chevron-right"></i></div>
         </div>
-        <div class="profile-menu-item" onclick="toast('Manage your subscription plan')">
+        <div class="profile-menu-item" onclick="openPremiumModal()">
           <div class="profile-menu-icon"><i data-lucide="credit-card"></i></div>
           <div class="profile-menu-text">
             <div class="profile-menu-title">Subscription</div>
@@ -2325,6 +2352,79 @@ body {
         <label class="radio-item"><input type="radio" name="sort" value="price-desc" onchange="applySort('price-desc')"> Price: High to Low</label>
         <label class="radio-item"><input type="radio" name="sort" value="newest" onchange="applySort('newest')"> Newest</label>
       </div>
+    </div>
+  </div>
+
+
+  <!-- ========== NESTFIND APP ACCESS MODAL ========== -->
+  <div class="modal-overlay" id="app-access-modal">
+    <div class="modal-sheet" style="position:relative">
+      <div class="modal-handle"></div>
+      <div class="modal-title">Welcome to NestFind</div>
+      <div class="premium-hero">
+        <h3>NestFind Access</h3>
+        <p>All NestFind members pay a one-time <strong>₦5,000</strong> access fee to use the marketplace, whether you are searching for a property or listing one.</p>
+        <div class="premium-feature-list">
+          <div class="premium-feature"><i data-lucide="search"></i><span>Search and compare properties.</span></div>
+          <div class="premium-feature"><i data-lucide="message-circle"></i><span>Chat with owners and arrange viewings.</span></div>
+          <div class="premium-feature"><i data-lucide="plus-circle"></i><span>List your own property after paying the ₦10,000 publication fee.</span></div>
+        </div>
+      </div>
+      <div class="payment-summary">
+        <div class="payment-summary-row"><span>NestFind app access</span><strong>₦5,000</strong></div>
+        <div class="payment-summary-row total"><span>Total</span><span>₦5,000</span></div>
+      </div>
+      <button class="btn-primary" onclick="payForAppAccess()"><i data-lucide="lock-keyhole"></i> Pay ₦5,000 & Start Using NestFind</button>
+      <div class="payment-note">Payment is processed securely through Paystack. NestFind does not see or store your card details.</div>
+    </div>
+  </div>
+
+  <!-- ========== PREMIUM MODAL ========== -->
+  <div class="modal-overlay" id="premium-modal">
+    <div class="modal-sheet" style="position:relative">
+      <div class="modal-handle"></div>
+      <button class="modal-close" onclick="closeModal('premium-modal')"><i data-lucide="x"></i></button>
+      <div class="modal-title">NestFind Premium</div>
+      <div class="premium-hero">
+        <h3>Unlock more with Premium</h3>
+        <p id="premium-modal-message">Videos larger than 50 MB require NestFind Premium. Premium is separate from the ₦5,000 NestFind app access fee.</p>
+        <div class="premium-feature-list">
+          <div class="premium-feature"><i data-lucide="check-circle-2"></i><span>Upload and process videos larger than 50 MB.</span></div>
+          <div class="premium-feature"><i data-lucide="check-circle-2"></i><span>Premium membership badge on your profile.</span></div>
+          <div class="premium-feature"><i data-lucide="check-circle-2"></i><span>More seller tools as NestFind grows.</span></div>
+        </div>
+      </div>
+      <div class="plan-grid">
+        <div class="plan-card">
+          <div class="plan-name">Monthly</div>
+          <div class="plan-price">₦10,000</div>
+          <div class="plan-period">per month</div>
+          <button class="btn-primary" onclick="subscribePremium('monthly')">Subscribe</button>
+        </div>
+        <div class="plan-card featured">
+          <div class="plan-name">Yearly</div>
+          <div class="plan-price">₦120,000</div>
+          <div class="plan-period">per year</div>
+          <button class="btn-primary" onclick="subscribePremium('yearly')">Subscribe</button>
+        </div>
+      </div>
+      <div class="payment-note">Payments are processed securely through Paystack. NestFind does not see or store your card details.</div>
+    </div>
+  </div>
+
+  <!-- ========== LISTING PAYMENT MODAL ========== -->
+  <div class="modal-overlay" id="listing-payment-modal">
+    <div class="modal-sheet" style="position:relative">
+      <div class="modal-handle"></div>
+      <button class="modal-close" onclick="closeModal('listing-payment-modal')"><i data-lucide="x"></i></button>
+      <div class="modal-title">Publish Your Property</div>
+      <div class="payment-summary">
+        <div class="payment-summary-row"><span>Listing publication fee</span><strong>₦10,000</strong></div>
+        <div class="payment-summary-row"><span>Property</span><span id="listing-payment-title">Your property</span></div>
+        <div class="payment-summary-row total"><span>Total</span><span>₦10,000</span></div>
+      </div>
+      <button class="btn-primary" onclick="payToPublishListing()"><i data-lucide="lock-keyhole"></i> Pay ₦10,000 & Publish</button>
+      <div class="payment-note">After successful payment verification, NestFind will upload your media and publish the property. This ₦10,000 publication fee is separate from the ₦5,000 NestFind app access fee and from any rent or sale payment between you and the property owner/buyer. Property rent/sale payments are still made directly between the parties.</div>
     </div>
   </div>
 
@@ -2456,7 +2556,7 @@ const PROPERTIES = [
     verified: false,
     image: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=600&q=80",
     images: ["https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800&q=80"],
-    description: "30sqm shop space in a busy commercial area of Ikeja. High foot traffic, suitable for retail or services. Rent is ₦2.5m yearly.",
+    description: "30sqm shop space in a busy commercial area of Ikeja. High foot traffic, suitable for retail or services. Rent is ₦2,500,000 yearly.",
     amenities: ["Security", "Good Location"],
     owner: "Bright Properties",
     ownerAvatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&q=80",
@@ -2554,7 +2654,7 @@ const DEFAULT_CONVERSATIONS = [
   { id: 1, propertyId: 1, name: "Mr. Adewale", avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&q=80", property: "3 Bedroom Apartment - Lekki", lastMessage: "Yes, the house is still available. We can schedule a viewing.", time: "10:24 AM", unread: true },
   { id: 2, propertyId: 2, name: "Luxury Homes NG", avatar: "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=100&q=80", property: "4 Bedroom Duplex - Ajah", lastMessage: "Good morning! When are you available to view?", time: "9:18 AM", unread: true },
   { id: 3, propertyId: 4, name: "Sarah Daniels", avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&q=80", property: "Self Contain - Yaba", lastMessage: "Can I schedule a viewing for tomorrow?", time: "Yesterday", unread: false },
-  { id: 4, propertyId: 6, name: "Bright Properties", avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&q=80", property: "Shop - Ikeja", lastMessage: "The shop is 30sqm. Rent is ₦2.5m yearly.", time: "Yesterday", unread: false },
+  { id: 4, propertyId: 6, name: "Bright Properties", avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&q=80", property: "Shop - Ikeja", lastMessage: "The shop is 30sqm. Rent is ₦2,500,000 yearly.", time: "Yesterday", unread: false },
   { id: 5, propertyId: 3, name: "Mr. Collins", avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&q=80", property: "2 Bedroom Apartment - Ikoyi", lastMessage: "Perfect, see you then.", time: "Mon", unread: false },
   { id: 6, propertyId: 7, name: "Comfort Stay Hotel", avatar: "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=100&q=80", property: "Hotel Room - Victoria Island", lastMessage: "You're welcome!", time: "Mon", unread: false }
 ];
@@ -2582,6 +2682,20 @@ let otpResendSeconds = 0;
 let screenHistory = [];
 let allProperties = [...PROPERTIES, ...userListings];
 
+// Payment configuration. Add your Paystack PUBLIC key here. Never put a Paystack secret key in this file.
+const PAYSTACK_PUBLIC_KEY = 'PASTE_YOUR_PAYSTACK_PUBLIC_KEY_HERE';
+const PAYMENT_VERIFY_FUNCTION = 'verify-paystack-payment';
+const APP_ACCESS_FEE = 5000;
+const LISTING_PUBLICATION_FEE = 10000;
+const PREMIUM_PLANS = {
+  monthly: { amount: 10000, days: 30, label: 'Monthly' },
+  yearly: { amount: 120000, days: 365, label: 'Yearly' }
+};
+let pendingLargeVideoFile = null;
+let pendingListingPayload = null;
+let hasAppAccess = false;
+
+
 // ==================== UTILS ====================
 function formatPrice(price, period) {
   const formatted = '₦' + price.toLocaleString('en-NG');
@@ -2591,6 +2705,178 @@ function formatPrice(price, period) {
   if (period === 'night') return formatted + ' / night';
   if (period === 'day') return formatted + ' / day';
   return formatted;
+}
+
+function formatNaira(amount) {
+  return '₦' + Number(amount || 0).toLocaleString('en-NG');
+}
+
+function isPremiumMember() {
+  return Number(localStorage.getItem('nf_premium_until') || 0) > Date.now();
+}
+
+function updateMembershipBadge() {
+  const el = document.getElementById('membership-badge');
+  if (!el) return;
+  el.innerHTML = isPremiumMember() ? '<i data-lucide="crown"></i> Premium Member' : '<i data-lucide="crown"></i> Free Member';
+  if (window.lucide) lucide.createIcons();
+}
+
+function openPremiumModal(reason = '') {
+  const message = document.getElementById('premium-modal-message');
+  if (message) {
+    message.textContent = reason || 'Videos larger than 50 MB require NestFind Premium. Choose a monthly or yearly plan to continue.';
+  }
+  document.getElementById('premium-modal')?.classList.add('active');
+  lucide.createIcons();
+}
+
+function closePaymentModals() {
+  document.getElementById('premium-modal')?.classList.remove('active');
+  document.getElementById('listing-payment-modal')?.classList.remove('active');
+}
+
+async function loadAppAccessStatus() {
+  if (!currentUser || !supabaseClient) {
+    hasAppAccess = false;
+    return false;
+  }
+  try {
+    const { data, error } = await supabaseClient
+      .from('app_access_payments')
+      .select('id,reference,amount,status,created_at')
+      .eq('user_id', currentUser.id)
+      .eq('status', 'success')
+      .eq('amount', APP_ACCESS_FEE)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    hasAppAccess = !error && !!data;
+  } catch (e) {
+    console.warn('Could not load NestFind access status:', e);
+    hasAppAccess = false;
+  }
+  return hasAppAccess;
+}
+
+function openAppAccessModal() {
+  document.getElementById('app-access-modal')?.classList.add('active');
+  lucide.createIcons();
+}
+
+function closeAppAccessModal() {
+  document.getElementById('app-access-modal')?.classList.remove('active');
+}
+
+async function requireAppAccess() {
+  if (!currentUser) {
+    toast('Please sign in first.');
+    showScreen('auth');
+    return false;
+  }
+  if (hasAppAccess) return true;
+  const ok = await loadAppAccessStatus();
+  if (ok) return true;
+  openAppAccessModal();
+  return false;
+}
+
+async function startPaystackPayment(purpose, amount, metadata = {}) {
+  if (!currentUser?.email) {
+    toast('Please sign in before making a payment.');
+    return;
+  }
+  if (!window.PaystackPop) {
+    toast('Payment service is still loading. Please try again.');
+    return;
+  }
+  if (!PAYSTACK_PUBLIC_KEY || PAYSTACK_PUBLIC_KEY.includes('PASTE_YOUR')) {
+    toast('Paystack is not configured yet. Add your public key first.');
+    return;
+  }
+
+  const popup = new PaystackPop();
+  popup.newTransaction({
+    key: PAYSTACK_PUBLIC_KEY,
+    email: currentUser.email,
+    amount: Number(amount) * 100,
+    currency: 'NGN',
+    metadata: { ...metadata, purpose, user_id: currentUser.id },
+    ...(purpose === 'premium' ? { planInterval: metadata.plan === 'yearly' ? 'annually' : 'monthly' } : {}),
+    onSuccess: async (transaction) => {
+      toast('Payment received. Verifying…');
+      try {
+        const { data, error } = await supabaseClient.functions.invoke(PAYMENT_VERIFY_FUNCTION, {
+          body: {
+            reference: transaction.reference,
+            expected_amount: Number(amount),
+            purpose,
+            plan: metadata.plan || null
+          }
+        });
+        if (error) throw error;
+        if (!data?.verified) throw new Error(data?.message || 'Payment could not be verified.');
+
+        if (purpose === 'access') {
+          hasAppAccess = true;
+          localStorage.setItem('nf_app_access', '1');
+          closeAppAccessModal();
+          toast('Payment confirmed. Welcome to NestFind.');
+        } else if (purpose === 'premium') {
+          const days = PREMIUM_PLANS[metadata.plan]?.days || 30;
+          const currentUntil = Number(localStorage.getItem('nf_premium_until') || 0);
+          const base = Math.max(Date.now(), currentUntil);
+          localStorage.setItem('nf_premium_until', String(base + days * 24 * 60 * 60 * 1000));
+          updateMembershipBadge();
+          closePaymentModals();
+          toast('Premium activated successfully.');
+
+          if (pendingLargeVideoFile) {
+            const largeFile = pendingLargeVideoFile;
+            pendingLargeVideoFile = null;
+            try {
+              setVideoProcessingMessage('Premium active. Processing your large video…');
+              const compressedFile = await compressVideoForNestFind(largeFile);
+              videoFile = compressedFile;
+              renderPhotoPreviews();
+              setVideoProcessingMessage(`Premium video processed to ${formatMediaSize(compressedFile.size)}.`);
+              toast('Premium video is ready to upload.');
+            } catch (compressionError) {
+              console.error(compressionError);
+              toast(compressionError?.message || 'We could not process the video.');
+            }
+          }
+        } else if (purpose === 'listing') {
+          closePaymentModals();
+          await publishListingAfterPayment(transaction.reference);
+        }
+      } catch (error) {
+        console.error('NestFind payment verification error:', error);
+        toast('Payment was received, but verification failed. Please contact support before paying again.');
+      }
+    },
+    onCancel: () => toast('Payment cancelled.'),
+    onError: (error) => toast(error?.message || 'Payment could not be started.')
+  });
+}
+
+function payForAppAccess() {
+  startPaystackPayment('access', APP_ACCESS_FEE, { access: 'nestfind' });
+}
+
+function subscribePremium(plan) {
+  const selected = PREMIUM_PLANS[plan];
+  if (!selected) return;
+  startPaystackPayment('premium', selected.amount, { plan });
+}
+
+async function payToPublishListing() {
+  if (!pendingListingPayload) {
+    toast('Please complete the property details first.');
+    return;
+  }
+  if (!(await requireAppAccess())) return;
+  startPaystackPayment('listing', LISTING_PUBLICATION_FEE, { property_title: pendingListingPayload.title });
 }
 
 function toast(msg) {
@@ -2654,7 +2940,8 @@ function enterApp() {
   showScreen('home');
 }
 
-function navTo(target) {
+async function navTo(target) {
+  if (target !== 'home' && !(await requireAppAccess())) return;
   if (target === 'home') showScreen('home');
   else if (target === 'search') showScreen('search');
   else if (target === 'add') showScreen('add');
@@ -3087,7 +3374,171 @@ function handlePropertyImages(event) {
   renderPhotoPreviews();
 }
 
-function handlePropertyVideo(event) {
+const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
+
+function formatMediaSize(bytes) {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 MB';
+  const mb = bytes / (1024 * 1024);
+  if (mb < 1) return `${Math.round(bytes / 1024)} KB`;
+  return `${mb.toFixed(mb >= 10 ? 0 : 1)} MB`;
+}
+
+function setVideoProcessingMessage(message) {
+  const help = document.querySelector('#screen-add .media-upload-help');
+  if (help) help.textContent = message;
+}
+
+function chooseRecordingMimeType() {
+  const candidates = [
+    'video/mp4;codecs=h264,aac',
+    'video/mp4',
+    'video/webm;codecs=vp9,opus',
+    'video/webm;codecs=vp8,opus',
+    'video/webm'
+  ];
+  if (!window.MediaRecorder) return '';
+  return candidates.find(type => MediaRecorder.isTypeSupported(type)) || '';
+}
+
+function waitForVideoMetadata(video) {
+  return new Promise((resolve, reject) => {
+    if (video.readyState >= 1 && video.videoWidth && video.videoHeight) {
+      resolve();
+      return;
+    }
+    const onLoaded = () => { cleanup(); resolve(); };
+    const onError = () => { cleanup(); reject(new Error('The video could not be read in this browser.')); };
+    const cleanup = () => {
+      video.removeEventListener('loadedmetadata', onLoaded);
+      video.removeEventListener('error', onError);
+    };
+    video.addEventListener('loadedmetadata', onLoaded, { once: true });
+    video.addEventListener('error', onError, { once: true });
+  });
+}
+
+async function compressVideoForNestFind(file) {
+  if (file.size <= MAX_VIDEO_BYTES) return file;
+  if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) {
+    throw new Error('This browser does not support automatic video compression.');
+  }
+
+  const mimeType = chooseRecordingMimeType();
+  if (!mimeType) throw new Error('This browser does not support a compatible video format.');
+
+  const sourceUrl = URL.createObjectURL(file);
+  const video = document.createElement('video');
+  video.src = sourceUrl;
+  video.preload = 'auto';
+  video.playsInline = true;
+  video.setAttribute('playsinline', '');
+  video.setAttribute('webkit-playsinline', '');
+  video.muted = true;
+
+  try {
+    await waitForVideoMetadata(video);
+    const sourceStream = video.captureStream ? video.captureStream() : null;
+    if (!sourceStream) throw new Error('Video capture is not supported in this browser.');
+
+    const maxDimension = Math.max(video.videoWidth, video.videoHeight);
+    const scale = Math.min(1, 720 / maxDimension);
+    const width = Math.max(2, Math.round(video.videoWidth * scale / 2) * 2);
+    const height = Math.max(2, Math.round(video.videoHeight * scale / 2) * 2);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d', { alpha: false });
+    const canvasStream = canvas.captureStream(30);
+
+    // Keep the original audio track when the source video has one.
+    sourceStream.getAudioTracks().forEach(track => canvasStream.addTrack(track));
+
+    const bitrates = [
+      { video: 2200000, audio: 96000 },
+      { video: 1500000, audio: 80000 },
+      { video: 1000000, audio: 64000 }
+    ];
+
+    let finalBlob = null;
+
+    for (let attempt = 0; attempt < bitrates.length; attempt++) {
+      const settings = bitrates[attempt];
+      const recorder = new MediaRecorder(canvasStream, {
+        mimeType,
+        videoBitsPerSecond: settings.video,
+        audioBitsPerSecond: settings.audio
+      });
+      const chunks = [];
+      let lastProgress = -1;
+
+      const blobPromise = new Promise((resolve, reject) => {
+        recorder.ondataavailable = event => {
+          if (event.data && event.data.size) chunks.push(event.data);
+        };
+        recorder.onerror = event => reject(event.error || new Error('Video compression failed.'));
+        recorder.onstop = () => resolve(new Blob(chunks, { type: mimeType.split(';')[0] }));
+      });
+
+      const drawFrame = () => {
+        if (!video.paused && !video.ended) {
+          ctx.drawImage(video, 0, 0, width, height);
+          const duration = Number.isFinite(video.duration) ? video.duration : 0;
+          const progress = duration ? Math.round((video.currentTime / duration) * 100) : 0;
+          if (progress !== lastProgress) {
+            lastProgress = progress;
+            setVideoProcessingMessage(`Compressing video ${progress}%… Please keep this page open.`);
+          }
+          requestAnimationFrame(drawFrame);
+        }
+      };
+
+      recorder.start(1000);
+      ctx.drawImage(video, 0, 0, width, height);
+
+      const stopRecorder = () => {
+        if (recorder.state !== 'inactive') recorder.stop();
+      };
+      video.addEventListener('ended', stopRecorder, { once: true });
+
+      try {
+        await video.play();
+      } catch (playError) {
+        stopRecorder();
+        throw new Error('The browser blocked video processing. Please tap the video selector again and retry.');
+      }
+      requestAnimationFrame(drawFrame);
+
+      finalBlob = await blobPromise;
+      if (finalBlob.size <= MAX_VIDEO_BYTES) break;
+
+      // Reset the video timeline for a lower-bitrate retry.
+      video.pause();
+      video.currentTime = 0;
+      await new Promise(resolve => {
+        const onSeeked = () => { video.removeEventListener('seeked', onSeeked); resolve(); };
+        video.addEventListener('seeked', onSeeked, { once: true });
+      });
+    }
+
+    if (!finalBlob || finalBlob.size > MAX_VIDEO_BYTES) {
+      throw new Error('The video is still larger than 50 MB after compression. Try a shorter video.');
+    }
+
+    const extension = mimeType.startsWith('video/mp4') ? 'mp4' : 'webm';
+    const baseName = (file.name || 'nestfind-video').replace(/\.[^.]+$/, '');
+    return new File([finalBlob], `${baseName}-compressed.${extension}`, {
+      type: finalBlob.type,
+      lastModified: Date.now()
+    });
+  } finally {
+    URL.revokeObjectURL(sourceUrl);
+    try { video.pause(); } catch (e) {}
+    video.src = '';
+  }
+}
+
+async function handlePropertyVideo(event) {
   const file = event.target.files?.[0];
   if (!file) return;
 
@@ -3096,15 +3547,18 @@ function handlePropertyVideo(event) {
     event.target.value = '';
     return;
   }
-  if (file.size > 50 * 1024 * 1024) {
-    toast('Video must be 50 MB or smaller.');
-    event.target.value = '';
+
+  event.target.value = '';
+
+  if (file.size <= MAX_VIDEO_BYTES) {
+    videoFile = file;
+    renderPhotoPreviews();
     return;
   }
 
-  videoFile = file;
-  event.target.value = '';
-  renderPhotoPreviews();
+  pendingLargeVideoFile = file;
+  const originalSize = formatMediaSize(file.size);
+  openPremiumModal(`Your video is ${originalSize}, which is above the 50 MB free upload limit. Subscribe to NestFind Premium to unlock large-video processing.`);
 }
 
 function removePhotoFile(index) {
@@ -3270,6 +3724,8 @@ async function publishListing() {
     return;
   }
 
+  if (!(await requireAppAccess())) return;
+
   const title = document.getElementById('add-title').value.trim();
   const propType = document.getElementById('add-prop-type').value;
   const beds = Number(document.getElementById('add-beds').value || 0);
@@ -3280,7 +3736,6 @@ async function publishListing() {
   const city = document.getElementById('add-city').value.trim() || 'Lagos';
   const price = Number(document.getElementById('add-price').value || 0);
   const period = periodForType(selectedListingType());
-  const contact = document.getElementById('add-contact').value;
   const phone = document.getElementById('add-phone').value.trim();
 
   if (!title || !description || !location || !price) {
@@ -3288,13 +3743,10 @@ async function publishListing() {
     return;
   }
 
-  const fallbackImage = 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&q=80';
-  const photos = photoUrls.length ? [...photoUrls] : [fallbackImage];
-  const type = selectedListingType();
-  const listing = {
+  pendingListingPayload = {
     owner_id: currentUser.id,
     title,
-    listing_type: typeLabel(type),
+    listing_type: typeLabel(selectedListingType()),
     property_type: propType,
     location,
     city,
@@ -3304,24 +3756,31 @@ async function publishListing() {
     bathrooms: baths,
     parking,
     description,
-    photos: photoUrls.length ? [...photoUrls] : [fallbackImage],
+    photos: [],
     video_url: '',
     amenities: ['Security', 'Water', ...(parking ? ['Parking'] : [])],
     is_verified: false,
     is_featured: false,
-    status: 'active'
+    status: 'active',
+    _phone: phone
   };
 
-  if (!supabaseClient) {
-    toast('Supabase is not connected.');
-    return;
-  }
+  const paymentTitle = document.getElementById('listing-payment-title');
+  if (paymentTitle) paymentTitle.textContent = title;
+  document.getElementById('listing-payment-modal')?.classList.add('active');
+  lucide.createIcons();
+}
+
+async function publishListingAfterPayment(reference) {
+  if (!pendingListingPayload || !supabaseClient || !currentUser) return;
+  const listing = { ...pendingListingPayload };
+  const phone = listing._phone || '';
+  delete listing._phone;
 
   const button = document.querySelector('#screen-add .add-publish-bar .btn-primary');
   if (button) { button.disabled = true; button.textContent = 'Publishing…'; }
 
   try {
-    // Keep the public profile row in sync before creating the property.
     await supabaseClient.from('profiles').upsert({
       id: currentUser.id,
       full_name: currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || 'NestFind Member',
@@ -3329,13 +3788,17 @@ async function publishListing() {
       phone: phone || currentUser.user_metadata?.phone || ''
     });
 
-    toast(videoFile ? 'Uploading property media… Large videos may take a little while.' : 'Uploading property media…');
+    toast(videoFile ? 'Payment verified. Uploading property media…' : 'Payment verified. Publishing property…');
     const { uploadedPhotos, uploadedVideo } = await uploadSelectedMedia();
+    const fallbackImage = 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&q=80';
     listing.photos = [...uploadedPhotos, ...photoUrls];
     if (!listing.photos.length) listing.photos = [fallbackImage];
     listing.video_url = uploadedVideo || '';
 
-    const { data, error } = await supabaseClient.from('properties').insert(listing).select().single();
+    const { data, error } = await supabaseClient.rpc('publish_property_with_payment', {
+      p_reference: reference,
+      p_property: listing
+    });
     if (error) throw error;
 
     const row = data || listing;
@@ -3344,12 +3807,13 @@ async function publishListing() {
     allProperties = [...PROPERTIES, ...userListings];
     saveState();
     renderHome();
-    toast('Property published successfully.');
+    pendingListingPayload = null;
+    toast('Payment confirmed. Property published successfully.');
     resetListingForm();
     showScreen('profile');
   } catch (err) {
     console.error('NestFind publish error:', err);
-    toast('Property was not published: ' + (err.message || 'Database error'));
+    toast('Payment was successful, but the property could not be published: ' + (err.message || 'Database error'));
   } finally {
     if (button) { button.disabled = false; button.textContent = 'Publish Listing'; }
   }
@@ -3366,6 +3830,7 @@ function resetListingForm() {
   photoUrls = [];
   photoFiles = [];
   videoFile = null;
+  pendingLargeVideoFile = null;
   const imageInput = document.getElementById('property-image-input');
   const videoInput = document.getElementById('property-video-input');
   if (imageInput) imageInput.value = '';
@@ -3375,6 +3840,7 @@ function resetListingForm() {
 
 // ==================== PROFILE ====================
 function updateProfileCounts() {
+  updateMembershipBadge();
   const own = currentUser ? allProperties.filter(p => String(p.ownerId || '') === String(currentUser.id)).length : userListings.length;
   const saved = favorites.length;
   const unread = conversations.filter(c => c.unread).length;
@@ -3738,6 +4204,26 @@ function dbPropertyToApp(row) {
   };
 }
 
+async function loadPremiumStatus() {
+  if (!currentUser || !supabaseClient) { updateMembershipBadge(); return; }
+  try {
+    const { data, error } = await supabaseClient
+      .from('subscriptions')
+      .select('expires_at')
+      .eq('status', 'active')
+      .gt('expires_at', new Date().toISOString())
+      .order('expires_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!error && data?.expires_at) {
+      localStorage.setItem('nf_premium_until', String(new Date(data.expires_at).getTime()));
+    } else if (!error) {
+      localStorage.removeItem('nf_premium_until');
+    }
+  } catch (e) { console.warn('Could not load premium status:', e); }
+  updateMembershipBadge();
+}
+
 async function loadCurrentUserData() {
   if (!currentUser || !supabaseClient) return;
   try {
@@ -3792,10 +4278,22 @@ async function initNestFind() {
       if (currentUser) localStorage.setItem('nf_user', JSON.stringify(currentUser));
       else localStorage.removeItem('nf_user');
       updateProfileUI();
+      loadPremiumStatus();
+      if (currentUser) {
+        loadAppAccessStatus().then(access => { if (!access) openAppAccessModal(); });
+      } else {
+        hasAppAccess = false;
+        closeAppAccessModal();
+      }
     });
     await loadSupabaseProperties();
   }
-  if (currentUser) await loadCurrentUserData();
+  if (currentUser) {
+    await loadCurrentUserData();
+    await loadPremiumStatus();
+    await loadAppAccessStatus();
+    if (!hasAppAccess) openAppAccessModal();
+  }
   lucide.createIcons();
 }
 
