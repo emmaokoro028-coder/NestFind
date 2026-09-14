@@ -4068,21 +4068,125 @@ async function showViewings() {
   }
 
   document.getElementById('list-title').textContent = 'Viewing Schedule';
-  document.getElementById('list-content').innerHTML = '<div class="empty-state"><i data-lucide="loader-circle"></i><p>Loading viewing requests...</p></div>';
+  document.getElementById('list-content').innerHTML =
+    '<div class="empty-state"><i data-lucide="loader-circle"></i><p>Loading viewing requests...</p></div>';
+
   showScreen('list');
   lucide.createIcons();
 
   await loadViewingRequests();
 
-  document.getElementById('list-content').innerHTML = viewings.length ? viewings.map(v => `
-    <div class="viewing-card">
-      <div class="viewing-card-title">${escapeHtml(v.propertyTitle || 'Property Viewing')}</div>
-      <div class="viewing-card-meta">${escapeHtml(v.date || '')} at ${escapeHtml(v.time || '')}</div>
-      ${v.message ? `<div class="viewing-card-meta">${escapeHtml(v.message)}</div>` : ''}
-      <span class="viewing-card-status">${escapeHtml(v.status || 'Requested')}</span>
-      <button class="report-btn" onclick="toast('Contact the owner through NestFind chat for changes.')">Need to change?</button>
-    </div>
-  `).join('') : '<div class="empty-state"><i data-lucide="calendar"></i><p>No viewing requests yet.</p></div>';
+  document.getElementById('list-content').innerHTML = viewings.length
+    ? viewings.map(v => {
+
+        // Get the actual property
+        const property = getProperty(v.propertyId);
+
+        // Check both the viewing request owner and the property's owner
+        const requestOwnerId = String(v.ownerId || '');
+        const propertyOwnerId = String(property?.ownerId || '');
+        const loggedInUserId = String(currentUser.id || '');
+
+        const isOwner =
+          requestOwnerId === loggedInUserId ||
+          propertyOwnerId === loggedInUserId;
+
+        const roleLabel = isOwner
+          ? 'Incoming request'
+          : 'Your request';
+
+        // Show Accept / Decline to the property owner
+        const ownerActions =
+          isOwner &&
+          (v.status === 'Requested' || v.status === 'Pending')
+            ? `
+              <div class="viewing-actions"
+                   style="display:flex;gap:10px;margin-top:14px;">
+
+                <button
+                  class="btn-primary"
+                  style="
+                    flex:1;
+                    height:42px;
+                    border-radius:10px;
+                    font-weight:700;
+                  "
+                  onclick="updateViewingStatus(${JSON.stringify(String(v.id))}, 'Accepted')">
+                  ✓ Accept
+                </button>
+
+                <button
+                  class="btn-outline"
+                  style="
+                    flex:1;
+                    height:42px;
+                    border-radius:10px;
+                    font-weight:700;
+                    color:#dc2626;
+                    border-color:#fecaca;
+                  "
+                  onclick="updateViewingStatus(${JSON.stringify(String(v.id))}, 'Declined')">
+                  ✕ Decline
+                </button>
+
+              </div>
+            `
+            : '';
+
+        return `
+          <div class="viewing-card">
+
+            <div style="
+              font-size:11px;
+              font-weight:700;
+              color:var(--primary);
+              text-transform:uppercase;
+              letter-spacing:.04em;
+              margin-bottom:6px;
+            ">
+              ${roleLabel}
+            </div>
+
+            <div class="viewing-card-title">
+              ${escapeHtml(v.propertyTitle || 'Property Viewing')}
+            </div>
+
+            <div class="viewing-card-meta">
+              ${escapeHtml(v.date || '')} at ${escapeHtml(v.time || '')}
+            </div>
+
+            ${
+              v.message
+                ? `<div class="viewing-card-meta">${escapeHtml(v.message)}</div>`
+                : ''
+            }
+
+            <span class="viewing-card-status">
+              ${escapeHtml(v.status || 'Requested')}
+            </span>
+
+            ${ownerActions}
+
+            ${
+              !isOwner
+                ? `<button
+                     class="report-btn"
+                     onclick="toast('Contact the owner through NestFind chat for changes.')">
+                     Need to change?
+                   </button>`
+                : ''
+            }
+
+          </div>
+        `;
+      }).join('')
+    : `
+      <div class="empty-state">
+        <i data-lucide="calendar"></i>
+        <p>No viewing requests yet.</p>
+      </div>
+    `;
+
   lucide.createIcons();
 }
 
