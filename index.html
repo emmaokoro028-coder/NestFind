@@ -3943,8 +3943,61 @@ function showSaved() {
   showScreen('list');
 }
 
-function showViewings() {
+async function loadViewingRequests() {
+  if (!currentUser || !supabaseClient) {
+    viewings = [];
+    return;
+  }
+
+  try {
+    const { data, error } = await supabaseClient
+      .from('viewing_requests')
+      .select('id,property_id,requester_id,owner_id,viewing_date,viewing_time,status,notes,created_at')
+      .order('viewing_date', { ascending: true })
+      .order('viewing_time', { ascending: true });
+
+    if (error) throw error;
+
+    viewings = (data || []).map(row => {
+      const property = getProperty(row.property_id);
+      return {
+        id: row.id,
+        propertyId: row.property_id,
+        propertyTitle: property?.title || 'Property Viewing',
+        date: row.viewing_date || '',
+        time: String(row.viewing_time || '').slice(0, 5),
+        message: row.notes || '',
+        status: row.status || 'Requested',
+        ownerId: row.owner_id,
+        requesterId: row.requester_id,
+        createdAt: row.created_at || ''
+      };
+    });
+
+    saveState();
+    updateProfileCounts();
+    return viewings;
+  } catch (error) {
+    console.error('Viewing requests load error:', error);
+    toast('Could not load viewing requests. Please try again.');
+    return [];
+  }
+}
+
+async function showViewings() {
+  if (!currentUser) {
+    toast('Please sign in first.');
+    showScreen('auth');
+    return;
+  }
+
   document.getElementById('list-title').textContent = 'Viewing Schedule';
+  document.getElementById('list-content').innerHTML = '<div class="empty-state"><i data-lucide="loader-circle"></i><p>Loading viewing requests...</p></div>';
+  showScreen('list');
+  lucide.createIcons();
+
+  await loadViewingRequests();
+
   document.getElementById('list-content').innerHTML = viewings.length ? viewings.map(v => `
     <div class="viewing-card">
       <div class="viewing-card-title">${escapeHtml(v.propertyTitle || 'Property Viewing')}</div>
@@ -3953,8 +4006,8 @@ function showViewings() {
       <span class="viewing-card-status">${escapeHtml(v.status || 'Requested')}</span>
       <button class="report-btn" onclick="toast('Contact the owner through NestFind chat for changes.')">Need to change?</button>
     </div>
-  `).join('') : '<div class="empty-state"><i data-lucide="calendar"></i><p>No upcoming viewings.</p></div>';
-  showScreen('list');
+  `).join('') : '<div class="empty-state"><i data-lucide="calendar"></i><p>No viewing requests yet.</p></div>';
+  lucide.createIcons();
 }
 
 // ==================== SCHEDULE ====================
@@ -3972,20 +4025,65 @@ function openScheduleModal() {
   lucide.createIcons();
 }
 
-function submitViewing() {
+async function submitViewing() {
   if (!currentUser) { toast('Please sign in first.'); return; }
+  if (!supabaseClient) { toast('NestFind connection is unavailable. Please try again.'); return; }
+
   const p = getProperty(currentPropertyId);
   if (!p) return;
+
   const date = document.getElementById('viewing-date').value;
   const time = document.getElementById('viewing-time').value;
   const message = document.getElementById('viewing-message').value.trim();
   if (!date || !time) { toast('Choose a date and time.'); return; }
-  const v = { id: Date.now(), propertyId: p.id, propertyTitle: p.title, date, time, message, status: 'Requested' };
-  viewings.push(v);
-  saveState();
-  closeModal('schedule-modal');
-  updateProfileCounts();
-  toast('Viewing request saved. Chat with the owner to confirm.');
+  if (!p.id || !p.ownerId) { toast('This property is missing owner information.'); return; }
+  if (String(p.ownerId) === String(currentUser.id)) {
+    toast('You cannot request a viewing for your own property.');
+    return;
+  }
+
+  const button = document.querySelector('#schedule-modal button[onclick="submitViewing()"]');
+  if (button) { button.disabled = true; button.textContent = 'Sending...'; }
+
+  try {
+    const { data, error } = await supabaseClient
+      .from('viewing_requests')
+      .insert({
+        property_id: p.id,
+        requester_id: currentUser.id,
+        owner_id: p.ownerId,
+        viewing_date: date,
+        viewing_time: time,
+        status: 'Requested',
+        notes: message || null
+      })
+      .select('id,property_id,requester_id,owner_id,viewing_date,viewing_time,status,notes,created_at')
+      .single();
+
+    if (error) throw error;
+
+    const v = {
+      id: data.id,
+      propertyId: data.property_id,
+      propertyTitle: p.title,
+      date: data.viewing_date,
+      time: String(data.viewing_time || '').slice(0, 5),
+      message: data.notes || '',
+      status: data.status || 'Requested',
+      ownerId: data.owner_id
+    };
+
+    viewings = [v, ...viewings.filter(existing => String(existing.id) !== String(v.id))];
+    saveState();
+    closeModal('schedule-modal');
+    updateProfileCounts();
+    toast('Viewing request sent to the property owner.');
+  } catch (error) {
+    console.error('Viewing request error:', error);
+    toast(error?.message || 'Could not send the viewing request. Please try again.');
+  } finally {
+    if (button) { button.disabled = false; button.textContent = 'Request Viewing'; }
+  }
 }
 
 function closeModal(id) { document.getElementById(id)?.classList.remove('active'); }
@@ -4206,6 +4304,7 @@ async function handleAuth(event) {
     }
     updateProfileUI();
     await loadSupabaseProperties();
+    if (currentUser) await loadViewingRequests();
   } catch (err) {
     showAuthError(err.message || 'Authentication failed.');
   } finally {
@@ -4324,6 +4423,7 @@ async function initNestFind() {
     currentUser = data.session.user;
     localStorage.setItem('nf_user', JSON.stringify(currentUser));
     await loadCurrentUserData();
+    await loadViewingRequests();
   } else {
     currentUser = JSON.parse(localStorage.getItem('nf_user') || 'null');
   }
