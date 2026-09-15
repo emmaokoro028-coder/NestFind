@@ -1826,6 +1826,13 @@ body {
 .otp-resend-btn:disabled { color:var(--text-muted); cursor:not-allowed; background:none; }
 .otp-countdown { color:var(--text-muted); font-size:12px; margin-left:4px; }
 @media (max-width:420px) { .otp-boxes{gap:6px;} .otp-box{height:52px;font-size:22px;border-radius:12px;} }
+
+.viewing-actions button:disabled{opacity:.55;cursor:not-allowed}
+.viewing-card-status.accepted{background:#e8f7ef;color:#087443}
+.viewing-card-status.declined{background:#fff1f1;color:#c62828}
+.viewing-card-status.requested,.viewing-card-status.pending{background:#eef8f3;color:var(--primary)}
+.viewing-actions{animation:viewingActionsIn .18s ease-out}
+@keyframes viewingActionsIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 </style>
 </head>
 <body>
@@ -2717,6 +2724,8 @@ const DEFAULT_CONVERSATIONS = [
 
 // ==================== STATE ====================
 let currentUser = JSON.parse(localStorage.getItem('nf_user') || 'null');
+let viewingRefreshTimer = null;
+let viewingStatusBusy = new Set();
 let favorites = JSON.parse(localStorage.getItem('nf_favorites') || '[]');
 let conversations = JSON.parse(localStorage.getItem('nf_conversations') || 'null') || DEFAULT_CONVERSATIONS;
 let chatMessages = JSON.parse(localStorage.getItem('nf_chat_messages') || '{}');
@@ -3000,6 +3009,7 @@ function getProperty(id) {
 
 // ==================== NAVIGATION ====================
 function showScreen(id) {
+  if (id !== 'list') stopViewingRefresh();
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   const screen = document.getElementById('screen-' + id);
   if (screen) {
@@ -4019,6 +4029,79 @@ function showSaved() {
   showScreen('list');
 }
 
+async function syncAuthenticatedUser() {
+  if (!supabaseClient) return currentUser;
+  try {
+    const { data, error } = await supabaseClient.auth.getUser();
+    if (error) throw error;
+    currentUser = data?.user || null;
+    if (currentUser) {
+      localStorage.setItem('nf_user', JSON.stringify(currentUser));
+      await loadCurrentUserData();
+    } else {
+      localStorage.removeItem('nf_user');
+    }
+  } catch (error) {
+    console.warn('Could not sync authenticated user:', error);
+  }
+  updateProfileUI();
+  return currentUser;
+}
+
+function stopViewingRefresh() {
+  if (viewingRefreshTimer) {
+    clearInterval(viewingRefreshTimer);
+    viewingRefreshTimer = null;
+  }
+}
+
+function startViewingRefresh() {
+  stopViewingRefresh();
+  viewingRefreshTimer = setInterval(async () => {
+    if (!currentUser) return;
+    const listScreen = document.getElementById('screen-list');
+    const title = document.getElementById('list-title')?.textContent;
+    if (!listScreen?.classList.contains('active') || title !== 'Viewing Schedule') return;
+    await loadViewingRequests();
+    renderViewingSchedule();
+  }, 15000);
+}
+
+function renderViewingSchedule() {
+  const container = document.getElementById('list-content');
+  if (!container) return;
+  if (!viewings.length) {
+    container.innerHTML = '<div class="empty-state"><i data-lucide="calendar"></i><p>No viewing requests yet.</p></div>';
+    lucide.createIcons();
+    return;
+  }
+  const loggedInUserId = String(currentUser?.id || '');
+  container.innerHTML = viewings.map(v => {
+    const property = getProperty(v.propertyId);
+    const requestOwnerId = String(v.ownerId || '');
+    const propertyOwnerId = String(property?.ownerId || '');
+    const isOwner = !!loggedInUserId && (requestOwnerId === loggedInUserId || propertyOwnerId === loggedInUserId);
+    const status = String(v.status || 'Requested');
+    const statusClass = status.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const roleLabel = isOwner ? 'Incoming request' : 'Your request';
+    const ownerActions = isOwner && (status === 'Requested' || status === 'Pending') ? `
+      <div class="viewing-actions" style="display:flex;gap:10px;margin-top:14px;">
+        <button class="btn-primary" style="flex:1;height:42px;border-radius:10px;font-weight:700;" ${viewingStatusBusy.has(String(v.id)) ? 'disabled' : ''} onclick="updateViewingStatus(${JSON.stringify(String(v.id))}, 'Accepted')">✓ Accept</button>
+        <button class="btn-outline" style="flex:1;height:42px;border-radius:10px;font-weight:700;color:#dc2626;border-color:#fecaca;" ${viewingStatusBusy.has(String(v.id)) ? 'disabled' : ''} onclick="updateViewingStatus(${JSON.stringify(String(v.id))}, 'Declined')">✕ Decline</button>
+      </div>` : '';
+    return `<div class="viewing-card">
+      <div style="font-size:11px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;">${roleLabel}</div>
+      <div class="viewing-card-title">${escapeHtml(v.propertyTitle || property?.title || 'Property Viewing')}</div>
+      <div class="viewing-card-meta">${escapeHtml(v.date || '')} at ${escapeHtml(v.time || '')}</div>
+      ${v.message ? `<div class="viewing-card-meta">${escapeHtml(v.message)}</div>` : ''}
+      <span class="viewing-card-status ${statusClass}">${escapeHtml(status)}</span>
+      ${ownerActions}
+      ${!isOwner ? '<button class="report-btn" onclick="toast(\'Contact the owner through NestFind chat for changes.\')">Need to change?</button>' : ''}
+    </div>`;
+  }).join('');
+  lucide.createIcons();
+}
+
 async function loadViewingRequests() {
   if (!currentUser || !supabaseClient) {
     viewings = [];
@@ -4060,137 +4143,56 @@ async function loadViewingRequests() {
   }
 }
 
-async function showViewings() {
-  if (!currentUser) {
-    toast('Please sign in first.');
-    showScreen('auth');
-    return;
+async function updateViewingStatus(requestId, status) {
+  if (!supabaseClient) return;
+  if (!(await syncAuthenticatedUser())) { toast('Please sign in first.'); return; }
+  const request = viewings.find(v => String(v.id) === String(requestId));
+  if (!request) { toast('Viewing request not found.'); return; }
+  const property = getProperty(request.propertyId);
+  const loggedInUserId = String(currentUser.id);
+  const isOwner = String(request.ownerId || '') === loggedInUserId || String(property?.ownerId || '') === loggedInUserId;
+  if (!isOwner) { toast('Only the property owner can update this request.'); return; }
+  if (!['Accepted', 'Declined'].includes(status)) { toast('Invalid viewing status.'); return; }
+  const key = String(requestId);
+  if (viewingStatusBusy.has(key)) return;
+  viewingStatusBusy.add(key);
+  renderViewingSchedule();
+  try {
+    const { data, error } = await supabaseClient
+      .from('viewing_requests')
+      .update({ status })
+      .eq('id', requestId)
+      .eq('owner_id', currentUser.id)
+      .select('id,property_id,requester_id,owner_id,viewing_date,viewing_time,status,notes,created_at')
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) throw new Error('NestFind could not confirm owner permission for this request.');
+    const index = viewings.findIndex(v => String(v.id) === key);
+    if (index >= 0) viewings[index] = { ...viewings[index], status: data.status || status, ownerId: data.owner_id, requesterId: data.requester_id };
+    saveState();
+    toast(status === 'Accepted' ? 'Viewing request accepted.' : 'Viewing request declined.');
+    updateProfileCounts();
+  } catch (error) {
+    console.error('Viewing status update error:', error);
+    toast(error?.message || 'Could not update the viewing request.');
+  } finally {
+    viewingStatusBusy.delete(key);
+    renderViewingSchedule();
   }
-
-  document.getElementById('list-title').textContent = 'Viewing Schedule';
-  document.getElementById('list-content').innerHTML =
-    '<div class="empty-state"><i data-lucide="loader-circle"></i><p>Loading viewing requests...</p></div>';
-
-  showScreen('list');
-  lucide.createIcons();
-
-  await loadViewingRequests();
-
-  document.getElementById('list-content').innerHTML = viewings.length
-    ? viewings.map(v => {
-
-        // Get the actual property
-        const property = getProperty(v.propertyId);
-
-        // Check both the viewing request owner and the property's owner
-        const requestOwnerId = String(v.ownerId || '');
-        const propertyOwnerId = String(property?.ownerId || '');
-        const loggedInUserId = String(currentUser.id || '');
-
-        const isOwner =
-          requestOwnerId === loggedInUserId ||
-          propertyOwnerId === loggedInUserId;
-
-        const roleLabel = isOwner
-          ? 'Incoming request'
-          : 'Your request';
-
-        // Show Accept / Decline to the property owner
-        const ownerActions =
-          isOwner &&
-          (v.status === 'Requested' || v.status === 'Pending')
-            ? `
-              <div class="viewing-actions"
-                   style="display:flex;gap:10px;margin-top:14px;">
-
-                <button
-                  class="btn-primary"
-                  style="
-                    flex:1;
-                    height:42px;
-                    border-radius:10px;
-                    font-weight:700;
-                  "
-                  onclick="updateViewingStatus(${JSON.stringify(String(v.id))}, 'Accepted')">
-                  ✓ Accept
-                </button>
-
-                <button
-                  class="btn-outline"
-                  style="
-                    flex:1;
-                    height:42px;
-                    border-radius:10px;
-                    font-weight:700;
-                    color:#dc2626;
-                    border-color:#fecaca;
-                  "
-                  onclick="updateViewingStatus(${JSON.stringify(String(v.id))}, 'Declined')">
-                  ✕ Decline
-                </button>
-
-              </div>
-            `
-            : '';
-
-        return `
-          <div class="viewing-card">
-
-            <div style="
-              font-size:11px;
-              font-weight:700;
-              color:var(--primary);
-              text-transform:uppercase;
-              letter-spacing:.04em;
-              margin-bottom:6px;
-            ">
-              ${roleLabel}
-            </div>
-
-            <div class="viewing-card-title">
-              ${escapeHtml(v.propertyTitle || 'Property Viewing')}
-            </div>
-
-            <div class="viewing-card-meta">
-              ${escapeHtml(v.date || '')} at ${escapeHtml(v.time || '')}
-            </div>
-
-            ${
-              v.message
-                ? `<div class="viewing-card-meta">${escapeHtml(v.message)}</div>`
-                : ''
-            }
-
-            <span class="viewing-card-status">
-              ${escapeHtml(v.status || 'Requested')}
-            </span>
-
-            ${ownerActions}
-
-            ${
-              !isOwner
-                ? `<button
-                     class="report-btn"
-                     onclick="toast('Contact the owner through NestFind chat for changes.')">
-                     Need to change?
-                   </button>`
-                : ''
-            }
-
-          </div>
-        `;
-      }).join('')
-    : `
-      <div class="empty-state">
-        <i data-lucide="calendar"></i>
-        <p>No viewing requests yet.</p>
-      </div>
-    `;
-
-  lucide.createIcons();
 }
 
-// ==================== SCHEDULE ====================
+async function showViewings() {
+  if (!(await syncAuthenticatedUser())) { toast('Please sign in first.'); showScreen('auth'); return; }
+  document.getElementById('list-title').textContent = 'Viewing Schedule';
+  document.getElementById('list-content').innerHTML = '<div class="empty-state"><i data-lucide="loader-circle"></i><p>Loading viewing requests...</p></div>';
+  showScreen('list');
+  lucide.createIcons();
+  await loadSupabaseProperties();
+  await loadViewingRequests();
+  renderViewingSchedule();
+  startViewingRefresh();
+}
+
 function openScheduleModal() {
   if (!currentPropertyId) return;
   if (!currentUser) { toast('Please sign in to request a viewing.'); showScreen('auth'); return; }
@@ -4206,53 +4208,26 @@ function openScheduleModal() {
 }
 
 async function submitViewing() {
-  if (!currentUser) { toast('Please sign in first.'); return; }
+  if (!(await syncAuthenticatedUser())) { toast('Please sign in first.'); return; }
   if (!supabaseClient) { toast('NestFind connection is unavailable. Please try again.'); return; }
-
   const p = getProperty(currentPropertyId);
   if (!p) return;
-
   const date = document.getElementById('viewing-date').value;
   const time = document.getElementById('viewing-time').value;
   const message = document.getElementById('viewing-message').value.trim();
   if (!date || !time) { toast('Choose a date and time.'); return; }
   if (!p.id || !p.ownerId) { toast('This property is missing owner information.'); return; }
-  if (String(p.ownerId) === String(currentUser.id)) {
-    toast('You cannot request a viewing for your own property.');
-    return;
-  }
-
+  if (String(p.ownerId) === String(currentUser.id)) { toast('You cannot request a viewing for your own property.'); return; }
+  const duplicate = viewings.some(v => String(v.propertyId) === String(p.id) && String(v.requesterId || '') === String(currentUser.id) && String(v.date) === String(date) && String(v.time).slice(0,5) === String(time).slice(0,5) && !['Declined','Cancelled'].includes(String(v.status)));
+  if (duplicate) { toast('You already requested this viewing time.'); return; }
   const button = document.querySelector('#schedule-modal button[onclick="submitViewing()"]');
   if (button) { button.disabled = true; button.textContent = 'Sending...'; }
-
   try {
-    const { data, error } = await supabaseClient
-      .from('viewing_requests')
-      .insert({
-        property_id: p.id,
-        requester_id: currentUser.id,
-        owner_id: p.ownerId,
-        viewing_date: date,
-        viewing_time: time,
-        status: 'Requested',
-        notes: message || null
-      })
-      .select('id,property_id,requester_id,owner_id,viewing_date,viewing_time,status,notes,created_at')
-      .single();
-
+    const { data, error } = await supabaseClient.from('viewing_requests').insert({
+      property_id:p.id, requester_id:currentUser.id, owner_id:p.ownerId, viewing_date:date, viewing_time:time, status:'Requested', notes:message || null
+    }).select('id,property_id,requester_id,owner_id,viewing_date,viewing_time,status,notes,created_at').single();
     if (error) throw error;
-
-    const v = {
-      id: data.id,
-      propertyId: data.property_id,
-      propertyTitle: p.title,
-      date: data.viewing_date,
-      time: String(data.viewing_time || '').slice(0, 5),
-      message: data.notes || '',
-      status: data.status || 'Requested',
-      ownerId: data.owner_id
-    };
-
+    const v = { id:data.id, propertyId:data.property_id, propertyTitle:p.title, date:data.viewing_date, time:String(data.viewing_time || '').slice(0,5), message:data.notes || '', status:data.status || 'Requested', ownerId:data.owner_id, requesterId:data.requester_id, createdAt:data.created_at || '' };
     viewings = [v, ...viewings.filter(existing => String(existing.id) !== String(v.id))];
     saveState();
     closeModal('schedule-modal');
@@ -4598,39 +4573,40 @@ async function initNestFind() {
   renderHome();
   renderConversations();
   updateProfileUI();
-  const { data } = supabaseClient ? await supabaseClient.auth.getSession() : { data: { session: null } };
+  const { data } = supabaseClient ? await supabaseClient.auth.getSession() : { data:{session:null} };
   if (data?.session?.user) {
     currentUser = data.session.user;
     localStorage.setItem('nf_user', JSON.stringify(currentUser));
     await loadCurrentUserData();
-    await loadViewingRequests();
   } else {
     currentUser = JSON.parse(localStorage.getItem('nf_user') || 'null');
   }
   if (supabaseClient) {
-    supabaseClient.auth.onAuthStateChange((_event, session) => {
+    supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+      stopViewingRefresh();
       currentUser = session?.user || null;
-      if (currentUser) localStorage.setItem('nf_user', JSON.stringify(currentUser));
-      else localStorage.removeItem('nf_user');
-      updateProfileUI();
-      loadPremiumStatus();
       if (currentUser) {
-        loadMessageAccessStatus();
+        localStorage.setItem('nf_user', JSON.stringify(currentUser));
+        await loadCurrentUserData();
+        await loadSupabaseProperties();
+        await loadViewingRequests();
       } else {
-        messageAccessUntil = 0;
-        closeModal('message-access-modal');
+        localStorage.removeItem('nf_user');
+        viewings = [];
+        saveState();
       }
+      updateProfileUI();
     });
     await loadSupabaseProperties();
   }
   if (currentUser) {
-    await loadCurrentUserData();
+    await syncAuthenticatedUser();
     await loadPremiumStatus();
     await loadMessageAccessStatus();
+    await loadViewingRequests();
   }
   lucide.createIcons();
 }
-
 initNestFind();
 </script>
 </body>
