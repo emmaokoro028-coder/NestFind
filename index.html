@@ -2061,7 +2061,7 @@ body {
     </div>
     <div class="detail-body" id="detail-body"></div>
     <div class="detail-actions">
-      <button class="btn-outline" onclick="openChatFromDetail()"><i data-lucide="message-circle"></i> Chat with Owner</button>
+      <button class="btn-outline" id="detail-chat-btn" onclick="handleDetailChatClick()"><i data-lucide="message-circle"></i> Chat with Owner</button>
       <button class="btn-primary" onclick="openScheduleModal()"><i data-lucide="calendar"></i> Schedule Viewing</button>
     </div>
   </div>
@@ -3321,6 +3321,35 @@ function openProperty(id) {
   `;
   showScreen('detail');
   lucide.createIcons();
+  updateDetailChatButton(p);
+}
+
+function updateDetailChatButton(p) {
+  const button = document.getElementById('detail-chat-btn');
+  if (!button || !p) return;
+  const ownerId = String(p.ownerId || '');
+  const me = String(currentUser?.id || '');
+  const isOwner = !!ownerId && !!me && ownerId === me;
+  button.disabled = false;
+  button.innerHTML = isOwner
+    ? '<i data-lucide="building-2"></i> Your Listing'
+    : '<i data-lucide="message-circle"></i> Chat with Owner';
+  button.classList.toggle('owner-listing-btn', isOwner);
+  if (window.lucide) lucide.createIcons();
+}
+
+async function handleDetailChatClick() {
+  const p = getProperty(currentPropertyId);
+  if (!p) { toast('Property not found.'); return; }
+  if (!(await syncAuthenticatedUser())) return;
+  updateDetailChatButton(p);
+  const ownerId = String(p.ownerId || '');
+  const me = String(currentUser?.id || '');
+  if (ownerId && me && ownerId === me) {
+    toast('This is your listing. Sign in with another NestFind account to chat with the owner.');
+    return;
+  }
+  await openChatFromDetail();
 }
 
 async function openChatFromDetail() {
