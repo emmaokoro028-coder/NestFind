@@ -1900,6 +1900,46 @@ body {
 .status-banner{display:flex;gap:9px;align-items:flex-start;padding:12px;border-radius:12px;background:var(--primary-light);color:var(--primary);font-size:12px;line-height:1.5;margin-top:12px}
 .status-banner svg{width:17px;height:17px;flex:0 0 auto}
 
+
+/* ==================== ADMIN CENTER ==================== */
+.admin-scroll{padding:18px 16px 100px}
+.admin-hero{display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,var(--primary-light),var(--card));border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:16px}
+.admin-hero-icon{width:46px;height:46px;border-radius:14px;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.admin-hero-icon svg{width:23px;height:23px}
+.admin-hero-title{font-size:17px;font-weight:800;color:var(--text)}
+.admin-hero-sub{font-size:12px;color:var(--text-muted);margin-top:3px;line-height:1.4}
+.admin-tabs{display:flex;gap:6px;background:var(--bg);padding:4px;border-radius:12px;margin-bottom:18px}
+.admin-tab{flex:1;border:0;background:transparent;color:var(--text-muted);height:40px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer}
+.admin-tab.active{background:var(--card);color:var(--primary);box-shadow:var(--shadow)}
+.admin-section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px 0 12px}
+.admin-section-head h3{font-size:16px;margin:0;color:var(--text)}
+.admin-section-head p{font-size:12px;color:var(--text-muted);margin:4px 0 0;line-height:1.4}
+.admin-count{min-width:30px;height:30px;padding:0 9px;border-radius:15px;background:var(--primary-light);color:var(--primary);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800}
+.admin-card{background:var(--card);border:1px solid var(--border);border-radius:15px;padding:14px;margin-bottom:10px;box-shadow:var(--shadow)}
+.admin-card-top{display:flex;gap:10px;align-items:flex-start}
+.admin-card-icon{width:38px;height:38px;border-radius:11px;background:var(--primary-light);color:var(--primary);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.admin-card-icon svg{width:19px;height:19px}
+.admin-card-main{min-width:0;flex:1}
+.admin-card-title{font-size:14px;font-weight:750;color:var(--text);line-height:1.35}
+.admin-card-meta{font-size:11px;color:var(--text-muted);margin-top:3px;line-height:1.45}
+.admin-status{display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:800;text-transform:capitalize;background:var(--bg);color:var(--text-muted);white-space:nowrap}
+.admin-status.open,.admin-status.pending{background:#fff7df;color:#9a6700}
+.admin-status.resolved,.admin-status.verified{background:#e8f7ef;color:#087443}
+.admin-status.rejected,.admin-status.dismissed{background:#fff1f1;color:#c62828}
+.admin-card-details{margin-top:10px;padding:10px 11px;background:var(--bg);border-radius:10px;font-size:12px;color:var(--text-secondary);line-height:1.5}
+.admin-actions{display:flex;gap:8px;margin-top:11px}
+.admin-action{flex:1;height:38px;border-radius:10px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:12px;font-weight:700;cursor:pointer}
+.admin-action.primary{border-color:var(--primary);background:var(--primary);color:#fff}
+.admin-action.danger{border-color:#ef4444;color:#dc2626;background:transparent}
+.admin-empty{padding:50px 20px;text-align:center;color:var(--text-muted)}
+.admin-empty svg{width:34px;height:34px;margin-bottom:10px}
+.admin-listing-img{width:64px;height:64px;border-radius:11px;object-fit:cover;background:var(--bg);flex-shrink:0}
+.admin-listing-price{font-size:13px;font-weight:800;color:var(--primary);margin-top:5px}
+.admin-verify-row{display:flex;gap:6px;align-items:center;margin-top:9px;flex-wrap:wrap}
+.admin-verify-btn{border:1px solid var(--primary);background:transparent;color:var(--primary);border-radius:9px;padding:7px 10px;font-size:11px;font-weight:750;cursor:pointer}
+.admin-verify-btn.active{background:var(--primary);color:#fff}
+.admin-verify-btn.reject{border-color:#dc2626;color:#dc2626}
+
 </style>
 </head>
 <body>
@@ -2378,6 +2418,45 @@ body {
     </div>
   </div>
 
+  <!-- ========== ADMIN / MODERATION ========== -->
+  <div class="screen" id="screen-admin">
+    <div class="header">
+      <button class="header-back" onclick="navTo('profile')"><i data-lucide="arrow-left"></i></button>
+      <div class="header-title">Admin Center</div>
+      <button class="icon-btn" type="button" onclick="loadAdminPanel()"><i data-lucide="refresh-cw"></i></button>
+    </div>
+    <div class="scroll-content no-nav admin-scroll">
+      <div class="admin-hero">
+        <div class="admin-hero-icon"><i data-lucide="shield-check"></i></div>
+        <div>
+          <div class="admin-hero-title">NestFind Moderation</div>
+          <div class="admin-hero-sub">Review reports and manage listing verification.</div>
+        </div>
+      </div>
+
+      <div class="admin-tabs">
+        <button class="admin-tab active" id="admin-tab-reports" type="button" onclick="setAdminTab('reports')">Reports</button>
+        <button class="admin-tab" id="admin-tab-listings" type="button" onclick="setAdminTab('listings')">Listings</button>
+      </div>
+
+      <div id="admin-reports-panel">
+        <div class="admin-section-head">
+          <div><h3>Open reports</h3><p>Review property and user reports submitted by members.</p></div>
+          <span class="admin-count" id="admin-open-count">0</span>
+        </div>
+        <div id="admin-reports-list"></div>
+      </div>
+
+      <div id="admin-listings-panel" style="display:none">
+        <div class="admin-section-head">
+          <div><h3>Listing verification</h3><p>Verify or reject listings before displaying the verified badge.</p></div>
+          <span class="admin-count" id="admin-listing-count">0</span>
+        </div>
+        <div id="admin-listings-list"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- ========== PROFILE ========== -->
   <div class="screen" id="screen-profile">
     <div class="header">
@@ -2438,6 +2517,14 @@ body {
           <div class="profile-menu-text">
             <div class="profile-menu-title">Subscription</div>
             <div class="profile-menu-desc">Manage your plan</div>
+          </div>
+          <div class="profile-menu-arrow"><i data-lucide="chevron-right"></i></div>
+        </div>
+        <div class="profile-menu-item admin-menu-item" id="admin-menu-item" style="display:none" onclick="showAdminPanel()">
+          <div class="profile-menu-icon"><i data-lucide="shield-check"></i></div>
+          <div class="profile-menu-text">
+            <div class="profile-menu-title">Admin Center</div>
+            <div class="profile-menu-desc">Reports and listing verification</div>
           </div>
           <div class="profile-menu-arrow"><i data-lucide="chevron-right"></i></div>
         </div>
@@ -2845,6 +2932,8 @@ const DEFAULT_CONVERSATIONS = [
 
 // ==================== STATE ====================
 let currentUser = JSON.parse(localStorage.getItem('nf_user') || 'null');
+let currentProfile = null;
+let adminTab = 'reports';
 let viewingRefreshTimer = null;
 let viewingStatusBusy = new Set();
 let favorites = JSON.parse(localStorage.getItem('nf_favorites') || '[]');
@@ -3150,6 +3239,7 @@ function showScreen(id) {
   if (id === 'messages') renderConversations();
   if (id === 'notifications') renderNotifications();
   if (id === 'profile') updateProfileCounts();
+  if (id === 'admin') loadAdminPanel();
   if (id === 'map') renderMap();
   if (id === 'add') {
     photoUrls = [];
@@ -4733,6 +4823,8 @@ function updateProfileUI() {
   const emailEl = document.getElementById('profile-email');
   if (nameEl) nameEl.textContent = name;
   if (emailEl) emailEl.textContent = email;
+  const adminMenu = document.getElementById('admin-menu-item');
+  if (adminMenu) adminMenu.style.display = isNestFindAdmin() ? 'flex' : 'none';
   if (avatar && currentUser && !currentUser.user_metadata?.avatar_url) {
     const letter = encodeURIComponent(name.charAt(0).toUpperCase());
     avatar.src = `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="%23E8F5F0" width="100" height="100"/><text x="50" y="62" text-anchor="middle" fill="%230B6E4F" font-size="42">${letter}</text></svg>`;
@@ -5363,13 +5455,50 @@ async function loadPremiumStatus() {
 
 async function loadCurrentUserData() {
   if (!currentUser || !supabaseClient) return;
+
+  // Read the admin role through the SECURITY DEFINER RPC first. This avoids
+  // hiding the Admin Center when a profiles RLS policy blocks the normal row read.
+  let adminRole = false;
   try {
-    const { data } = await supabaseClient.from('profiles').select('*').eq('id', currentUser.id).maybeSingle();
-    if (data) {
-      currentUser = { ...currentUser, user_metadata: { ...currentUser.user_metadata, full_name: data.full_name || currentUser.user_metadata?.full_name } };
+    const { data: isAdmin, error: adminError } = await supabaseClient.rpc('is_nestfind_admin');
+    if (!adminError) adminRole = isAdmin === true;
+  } catch (e) {
+    console.warn('Admin role check skipped:', e);
+  }
+
+  try {
+    const { data, error } = await supabaseClient
+      .from('profiles')
+      .select('*')
+      .eq('id', currentUser.id)
+      .maybeSingle();
+    if (error) throw error;
+    currentProfile = data || { id: currentUser.id };
+    if (adminRole) currentProfile.role = 'admin';
+    const profileRole = adminRole ? 'admin' : (data?.role || 'user');
+    if (data || adminRole) {
+      currentUser = {
+        ...currentUser,
+        user_metadata: {
+          ...currentUser.user_metadata,
+          full_name: data?.full_name || currentUser.user_metadata?.full_name,
+          role: profileRole
+        }
+      };
       localStorage.setItem('nf_user', JSON.stringify(currentUser));
     }
-  } catch (e) { console.warn(e); }
+  } catch (e) {
+    console.warn('Profile load skipped:', e);
+    if (adminRole) {
+      currentProfile = { ...(currentProfile || {}), id: currentUser.id, role: 'admin' };
+      currentUser = {
+        ...currentUser,
+        user_metadata: { ...currentUser.user_metadata, role: 'admin' }
+      };
+      localStorage.setItem('nf_user', JSON.stringify(currentUser));
+    }
+  }
+
   updateProfileUI();
 }
 
@@ -5527,6 +5656,167 @@ async function loadSupabaseProperties() {
   }
 }
 
+
+// ==================== ADMIN / MODERATION ====================
+function isNestFindAdmin() {
+  return String(currentProfile?.role || currentUser?.user_metadata?.role || '').toLowerCase() === 'admin';
+}
+
+function showAdminPanel() {
+  if (!currentUser) { toast('Please sign in first.'); showScreen('auth'); return; }
+  if (!isNestFindAdmin()) { toast('Admin access is restricted.'); return; }
+  showScreen('admin');
+}
+
+function setAdminTab(tab) {
+  adminTab = tab;
+  document.getElementById('admin-tab-reports')?.classList.toggle('active', tab === 'reports');
+  document.getElementById('admin-tab-listings')?.classList.toggle('active', tab === 'listings');
+  document.getElementById('admin-reports-panel').style.display = tab === 'reports' ? 'block' : 'none';
+  document.getElementById('admin-listings-panel').style.display = tab === 'listings' ? 'block' : 'none';
+  if (tab === 'reports') loadAdminReports(); else loadAdminListings();
+}
+
+function adminEscape(value) { return escapeHtml(value == null ? '' : String(value)); }
+
+async function loadAdminPanel() {
+  if (!isNestFindAdmin() || !supabaseClient) return;
+  setAdminTab(adminTab);
+  lucide.createIcons();
+}
+
+async function loadAdminReports() {
+  if (!isNestFindAdmin() || !supabaseClient) return;
+  const container = document.getElementById('admin-reports-list');
+  const count = document.getElementById('admin-open-count');
+  if (!container) return;
+  container.innerHTML = '<div class="admin-empty"><i data-lucide="loader-circle"></i><div>Loading reports…</div></div>';
+  lucide.createIcons();
+  try {
+    const [{ data: propertyReports, error: propertyError }, { data: userReports, error: userError }] = await Promise.all([
+      supabaseClient.from('property_reports').select('id,property_id,reporter_id,reported_user_id,reason,details,status,created_at,reviewed_at,resolution_note').order('created_at', { ascending:false }).limit(100),
+      supabaseClient.from('user_reports').select('id,reported_user_id,reporter_id,reason,details,status,created_at,reviewed_at,resolution_note').order('created_at', { ascending:false }).limit(100)
+    ]);
+    if (propertyError) throw propertyError;
+    if (userError) throw userError;
+    const reports = [
+      ...(propertyReports || []).map(r => ({ ...r, reportType:'property' })),
+      ...(userReports || []).map(r => ({ ...r, reportType:'user' }))
+    ].sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+    const open = reports.filter(r => r.status === 'open');
+    if (count) count.textContent = open.length;
+    if (!reports.length) {
+      container.innerHTML = '<div class="admin-empty"><i data-lucide="shield-check"></i><div>No reports yet.</div></div>';
+      lucide.createIcons(); return;
+    }
+    const profileIds = [...new Set(reports.flatMap(r => [r.reporter_id, r.reported_user_id]).filter(Boolean))];
+    let profiles = [];
+    if (profileIds.length) {
+      const { data, error } = await supabaseClient.from('profiles').select('id,full_name,email').in('id', profileIds);
+      if (!error) profiles = data || [];
+    }
+    const profileMap = Object.fromEntries(profiles.map(x => [String(x.id), x]));
+    container.innerHTML = reports.map(r => {
+      const reporter = profileMap[String(r.reporter_id)]?.full_name || 'NestFind member';
+      const reported = profileMap[String(r.reported_user_id)]?.full_name || (r.reportType === 'property' ? 'Property owner' : 'Reported user');
+      const property = r.reportType === 'property' ? getProperty(r.property_id) : null;
+      const target = r.reportType === 'property' ? (property?.title || 'Property listing') : reported;
+      const created = r.created_at ? new Date(r.created_at).toLocaleString('en-NG', { dateStyle:'medium', timeStyle:'short' }) : '';
+      const details = r.details ? `<div class="admin-card-details">${adminEscape(r.details)}</div>` : '';
+      const isOpen = r.status === 'open';
+      return `<div class="admin-card">
+        <div class="admin-card-top">
+          <div class="admin-card-icon"><i data-lucide="${r.reportType === 'property' ? 'building-2' : 'user-round-warning'}"></i></div>
+          <div class="admin-card-main">
+            <div class="admin-card-title">${adminEscape(target)}</div>
+            <div class="admin-card-meta">${r.reportType === 'property' ? 'Property report' : 'User report'} · ${adminEscape(r.reason)}<br>Reported by ${adminEscape(reporter)} · ${adminEscape(created)}</div>
+          </div>
+          <span class="admin-status ${adminEscape(r.status)}">${adminEscape(r.status)}</span>
+        </div>
+        ${details}
+        ${r.resolution_note ? `<div class="admin-card-details"><strong>Resolution:</strong> ${adminEscape(r.resolution_note)}</div>` : ''}
+        ${isOpen ? `<div class="admin-actions"><button class="admin-action primary" type="button" onclick='reviewAdminReport(${JSON.stringify(r.reportType)},${JSON.stringify(String(r.id))},"resolved")'>Resolve</button><button class="admin-action danger" type="button" onclick='reviewAdminReport(${JSON.stringify(r.reportType)},${JSON.stringify(String(r.id))},"dismissed")'>Dismiss</button></div>` : ''}
+      </div>`;
+    }).join('');
+    lucide.createIcons();
+  } catch (error) {
+    console.error('NestFind admin reports error:', error);
+    container.innerHTML = `<div class="admin-empty"><i data-lucide="triangle-alert"></i><div>${adminEscape(error?.message || 'Could not load reports.')}</div></div>`;
+    lucide.createIcons();
+  }
+}
+
+async function reviewAdminReport(reportType, id, status) {
+  if (!isNestFindAdmin() || !supabaseClient) return;
+  const note = window.prompt(status === 'resolved' ? 'Resolution note (optional):' : 'Dismissal note (optional):', '') || null;
+  try {
+    const table = reportType === 'property' ? 'property_reports' : 'user_reports';
+    const { error } = await supabaseClient.rpc('admin_review_report', { p_report_type:reportType, p_report_id:id, p_status:status, p_resolution_note:note });
+    if (error) throw error;
+    toast(status === 'resolved' ? 'Report marked resolved.' : 'Report dismissed.');
+    await loadAdminReports();
+  } catch (error) {
+    toast(error?.message || 'Could not update report.');
+  }
+}
+
+async function loadAdminListings() {
+  if (!isNestFindAdmin() || !supabaseClient) return;
+  const container = document.getElementById('admin-listings-list');
+  const count = document.getElementById('admin-listing-count');
+  if (!container) return;
+  container.innerHTML = '<div class="admin-empty"><i data-lucide="loader-circle"></i><div>Loading listings…</div></div>';
+  lucide.createIcons();
+  try {
+    const { data, error } = await supabaseClient.from('properties').select('id,owner_id,title,location,city,price,price_period,photos,is_verified,verification_status,status,created_at').order('created_at',{ascending:false}).limit(100);
+    if (error) throw error;
+    const listings = data || [];
+    const needingReview = listings.filter(p => p.verification_status !== 'verified');
+    if (count) count.textContent = needingReview.length;
+    if (!listings.length) {
+      container.innerHTML = '<div class="admin-empty"><i data-lucide="building-2"></i><div>No listings found.</div></div>'; lucide.createIcons(); return;
+    }
+    const ownerIds = [...new Set(listings.map(p => p.owner_id).filter(Boolean))];
+    let owners = [];
+    if (ownerIds.length) {
+      const { data: ownerData } = await supabaseClient.from('profiles').select('id,full_name').in('id', ownerIds);
+      owners = ownerData || [];
+    }
+    const ownerMap = Object.fromEntries(owners.map(x => [String(x.id), x.full_name || 'Property owner']));
+    container.innerHTML = listings.map(p => {
+      const img = p.photos?.[0] || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=300&q=80';
+      const status = p.verification_status || (p.is_verified ? 'verified' : 'unverified');
+      return `<div class="admin-card"><div class="admin-card-top">
+        <img class="admin-listing-img" src="${adminEscape(img)}" alt="Property" onerror="this.src='https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=300&q=80'">
+        <div class="admin-card-main"><div class="admin-card-title">${adminEscape(p.title)}</div><div class="admin-card-meta">${adminEscape(p.location || p.city || '')}<br>Owner: ${adminEscape(ownerMap[String(p.owner_id)] || 'Property owner')}</div><div class="admin-listing-price">${formatPrice(Number(p.price || 0), p.price_period === 'sale' ? 'sale' : p.price_period)}</div></div>
+        <span class="admin-status ${adminEscape(status)}">${adminEscape(status)}</span>
+      </div><div class="admin-verify-row">
+        <button class="admin-verify-btn ${status === 'verified' ? 'active' : ''}" type="button" onclick='setListingVerification(${JSON.stringify(String(p.id))},"verified")'>Verify</button>
+        <button class="admin-verify-btn reject" type="button" onclick='setListingVerification(${JSON.stringify(String(p.id))},"rejected")'>Reject</button>
+        ${status !== 'unverified' ? `<button class="admin-verify-btn" type="button" onclick='setListingVerification(${JSON.stringify(String(p.id))},"unverified")'>Reset</button>` : ''}
+      </div></div>`;
+    }).join('');
+    lucide.createIcons();
+  } catch (error) {
+    console.error('NestFind admin listings error:', error);
+    container.innerHTML = `<div class="admin-empty"><i data-lucide="triangle-alert"></i><div>${adminEscape(error?.message || 'Could not load listings.')}</div></div>`;
+    lucide.createIcons();
+  }
+}
+
+async function setListingVerification(id, status) {
+  if (!isNestFindAdmin() || !supabaseClient) return;
+  try {
+    const { error } = await supabaseClient.rpc('admin_set_property_verification', { p_property_id:id, p_status:status });
+    if (error) throw error;
+    toast(status === 'verified' ? 'Listing verified.' : status === 'rejected' ? 'Listing rejected.' : 'Verification reset.');
+    await loadSupabaseProperties();
+    await loadAdminListings();
+  } catch (error) {
+    toast(error?.message || 'Could not update listing verification.');
+  }
+}
+
 // ==================== INIT ====================
 async function initNestFind() {
   lucide.createIcons();
@@ -5565,6 +5855,7 @@ async function initNestFind() {
         stopRealtimeMessages();
         stopRealtimeNotifications();
         notifications = [];
+        currentProfile = null;
         saveState();
       }
       updateProfileUI();
