@@ -1074,6 +1074,18 @@ body {
   cursor: pointer;
 }
 .conversation-item:active { background: var(--bg); }
+.conv-avatar-fallback {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: var(--primary-light);
+  color: var(--primary);
+  font-weight: 800;
+  font-size: 17px;
+}
 .conv-avatar {
   width: 48px;
   height: 48px;
@@ -3311,25 +3323,45 @@ function openProperty(id) {
   lucide.createIcons();
 }
 
-function openChatFromDetail() {
+async function openChatFromDetail() {
+  if (!(await requireMessageAccess())) return;
+  if (!(await syncAuthenticatedUser())) return;
   const p = getProperty(currentPropertyId);
   if (!p) return;
-  let conv = conversations.find(c => c.propertyId === currentPropertyId);
+  const ownerId = String(p.ownerId || '');
+  const me = String(currentUser?.id || '');
+  if (!ownerId) {
+    toast('This property does not have an owner account yet.');
+    return;
+  }
+  if (ownerId === me) {
+    toast('You are the owner of this property.');
+    return;
+  }
+
+  const convId = conversationKey(p.id, ownerId);
+  let conv = conversations.find(c => c.id === convId);
   if (!conv) {
     conv = {
-      id: Date.now(),
-      propertyId: currentPropertyId,
-      name: p.owner,
-      avatar: p.ownerAvatar,
-      property: p.title + ' - ' + p.area,
+      id: convId,
+      propertyId: p.id,
+      otherUserId: ownerId,
+      name: p.owner || 'Property Owner',
+      avatar: p.ownerAvatar || '',
+      property: `${p.title} - ${p.area || p.location || ''}`,
       lastMessage: '',
-      time: 'Now',
-      unread: false
+      time: 'New',
+      unread: false,
+      real: true
     };
     conversations.unshift(conv);
-    saveState();
   }
-  openChat(conv.id);
+  currentChatId = conv.id;
+  currentChatPropertyId = conv.propertyId;
+  await loadRemoteMessagesForConversation(conv);
+  renderConversations();
+  renderOpenChatHeader(conv);
+  showScreen('chat');
 }
 
 // ==================== FAVORITES ====================
@@ -3389,93 +3421,378 @@ function openPropertyFromMap() {
 }
 
 // ==================== MESSAGES ====================
+function conversationKey(propertyId, otherUserId) {
+  return `property:${String(propertyId)}:user:${String(otherUserId)}`;
+}
+
+function formatChatTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const now = new Date();
+  const sameDay = d.toDateString() === now.toDateString();
+  return sameDay
+    ? d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+    : d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+}
+
+function getConversationProperty(conv) {
+  return getProperty(conv?.propertyId);
+}
+
+async function resolveConversationName(conv) {
+  const property = getConversationProperty(conv);
+  if (property && String(property.ownerId || '') === String(conv.otherUserId || '')) {
+    return property.owner || 'Property Owner';
+  }
+  if (!supabaseClient || !conv?.otherUserId) return conv?.name || 'NestFind Member';
+  try {
+    const { data } = await supabaseClient
+      .from('profiles')
+      .select('full_name,email')
+      .eq('id', conv.otherUserId)
+      .maybeSingle();
+    if (data?.full_name) return data.full_name;
+    if (data?.email) return data.email.split('@')[0];
+  } catch (e) {}
+  return conv?.name || 'NestFind Member';
+}
+
+async function loadRemoteConversations() {
+  if (!currentUser || !supabaseClient) return;
+
+  try {
+    const { data, error } = await supabaseClient
+      .from('messages')
+      .select('id,sender_id,receiver_id,property_id,content,created_at,read_at')
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+
+    const groups = new Map();
+    for (const row of (data || [])) {
+      if (!row.property_id || !row.content) continue;
+      const sender = String(row.sender_id || '');
+      const receiver = String(row.receiver_id || '');
+      const me = String(currentUser.id);
+      const otherUserId = sender === me ? receiver : sender;
+      if (!otherUserId || otherUserId === me) continue;
+      const key = conversationKey(row.property_id, otherUserId);
+      if (!groups.has(key)) {
+        groups.set(key, {
+          id: key,
+          propertyId: row.property_id,
+          otherUserId,
+          name: 'NestFind Member',
+          avatar: '',
+          property: 'Property conversation',
+          lastMessage: '',
+          time: '',
+          unread: false,
+          real: true,
+          messages: []
+        });
+      }
+      const group = groups.get(key);
+      group.messages.push(row);
+      group.lastMessage = row.content;
+      group.time = formatChatTime(row.created_at);
+      if (receiver === me && !row.read_at && key !== String(currentChatId || '')) group.unread = true;
+    }
+
+    const remote = Array.from(groups.values());
+    for (const conv of remote) {
+      const p = getConversationProperty(conv);
+      if (p) {
+        conv.property = `${p.title} - ${p.area || p.location || ''}`;
+        conv.avatar = p.ownerAvatar || '';
+      }
+      conv.name = await resolveConversationName(conv);
+      conv.messages = conv.messages || [];
+    }
+
+    conversations = remote;
+    for (const conv of conversations) {
+      chatMessages[conv.id] = conv.messages.map(m => ({
+        id: m.id,
+        sender: String(m.sender_id) === String(currentUser.id) ? 'sent' : 'received',
+        text: m.content,
+        time: formatChatTime(m.created_at),
+        createdAt: m.created_at
+      }));
+    }
+    saveState();
+    updateProfileCounts();
+    renderConversations();
+  } catch (error) {
+    console.error('NestFind chat load error:', error);
+    toast(error?.message || 'Could not load your conversations.');
+  }
+}
+
+async function loadRemoteMessagesForConversation(conv) {
+  if (!currentUser || !supabaseClient || !conv?.propertyId || !conv?.otherUserId) return;
+  try {
+    const me = String(currentUser.id);
+    const other = String(conv.otherUserId);
+    const { data, error } = await supabaseClient
+      .from('messages')
+      .select('id,sender_id,receiver_id,property_id,content,created_at,read_at')
+      .eq('property_id', conv.propertyId)
+      .or(`and(sender_id.eq.${me},receiver_id.eq.${other}),and(sender_id.eq.${other},receiver_id.eq.${me})`)
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+
+    const rows = data || [];
+    chatMessages[conv.id] = rows.map(row => ({
+      id: row.id,
+      sender: String(row.sender_id) === me ? 'sent' : 'received',
+      text: row.content,
+      time: formatChatTime(row.created_at),
+      createdAt: row.created_at
+    }));
+
+    if (rows.length) {
+      const last = rows[rows.length - 1];
+      conv.lastMessage = last.content;
+      conv.time = formatChatTime(last.created_at);
+    }
+    conv.name = await resolveConversationName(conv);
+    const p = getConversationProperty(conv);
+    if (p) {
+      conv.property = `${p.title} - ${p.area || p.location || ''}`;
+      conv.avatar = p.ownerAvatar || '';
+    }
+    saveState();
+    renderChatMessages();
+  } catch (error) {
+    console.error('NestFind conversation load error:', error);
+    toast(error?.message || 'Could not load this conversation.');
+  }
+}
+
 function renderConversations() {
-  const q = (document.getElementById('msg-search')?.value || '').toLowerCase();
-  let list = conversations;
-  if (q) list = list.filter(c => c.name.toLowerCase().includes(q) || c.property.toLowerCase().includes(q));
+  const q = (document.getElementById('msg-search')?.value || '').toLowerCase().trim();
+  let list = conversations.filter(c => c.real || c.otherUserId);
+  if (q) list = list.filter(c =>
+    String(c.name || '').toLowerCase().includes(q) ||
+    String(c.property || '').toLowerCase().includes(q) ||
+    String(c.lastMessage || '').toLowerCase().includes(q)
+  );
+
   const container = document.getElementById('conversation-list');
   if (!list.length) {
-    container.innerHTML = '<div class="empty-state"><i data-lucide="message-circle"></i><p>No conversations yet</p></div>';
+    container.innerHTML = '<div class="empty-state"><i data-lucide="message-circle"></i><p>No conversations yet.<br>Open a property and choose Chat with Owner.</p></div>';
   } else {
-    container.innerHTML = list.map(c => `
-      <div class="conversation-item" onclick="openChat(${c.id})">
-        <img class="conv-avatar" src="${c.avatar}" alt="${c.name}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%23E8F5F0%22 width=%22100%22 height=%22100%22/><text x=%2250%22 y=%2258%22 text-anchor=%22middle%22 fill=%22%230B6E4F%22 font-size=%2236%22>${c.name[0]}</text></svg>'">
-        <div class="conv-body">
-          <div class="conv-top">
-            <span class="conv-name">${c.name}</span>
-            <span class="conv-time">${c.time}</span>
+    container.innerHTML = list.map(c => {
+      const initial = escapeHtml(String(c.name || 'N').trim().charAt(0).toUpperCase() || 'N');
+      const avatar = c.avatar
+        ? `<img class="conv-avatar" src="${escapeHtml(c.avatar)}" alt="${escapeHtml(c.name || 'NestFind Member')}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+        : '';
+      return `
+        <div class="conversation-item" data-conversation-id="${escapeHtml(c.id)}">
+          ${avatar}<div class="conv-avatar-fallback" style="${c.avatar ? 'display:none;' : 'display:flex;'}">${initial}</div>
+          <div class="conv-body">
+            <div class="conv-top">
+              <span class="conv-name">${escapeHtml(c.name || 'NestFind Member')}</span>
+              <span class="conv-time">${escapeHtml(c.time || '')}</span>
+            </div>
+            <div class="conv-property">${escapeHtml(c.property || 'Property conversation')}</div>
+            <div class="conv-preview">${escapeHtml(c.lastMessage || 'Start a conversation')}</div>
           </div>
-          <div class="conv-property">${c.property}</div>
-          <div class="conv-preview">${c.lastMessage || 'Start a conversation'}</div>
-        </div>
-        ${c.unread ? '<div class="conv-unread"></div>' : ''}
-      </div>
-    `).join('');
+          ${c.unread ? '<div class="conv-unread"></div>' : ''}
+        </div>`;
+    }).join('');
   }
+
+  container.querySelectorAll('[data-conversation-id]').forEach(item => {
+    item.addEventListener('click', () => openChat(item.getAttribute('data-conversation-id')));
+  });
   lucide.createIcons();
 }
 
 function filterConversations() { renderConversations(); }
 
-async function openChat(convId) {
-  const conv = conversations.find(c => c.id === convId);
+function renderOpenChatHeader(conv) {
   if (!conv) return;
+  document.getElementById('chat-name').textContent = conv.name || 'NestFind Member';
+  document.getElementById('chat-prop').textContent = conv.property || 'Property conversation';
+  const p = getConversationProperty(conv);
+  if (p) {
+    document.getElementById('chat-prop-img').src = p.image || '';
+    document.getElementById('chat-prop-title').textContent = p.title || 'Property';
+    document.getElementById('chat-prop-price').textContent = formatPrice(p.price, p.period);
+  }
+}
+
+async function openChat(convId) {
   if (!(await requireMessageAccess())) {
     pendingChatConversationId = convId;
     return;
   }
-  currentChatId = convId;
+  const conv = conversations.find(c => String(c.id) === String(convId));
+  if (!conv) return;
+  currentChatId = conv.id;
   currentChatPropertyId = conv.propertyId;
   conv.unread = false;
+  await loadRemoteMessagesForConversation(conv);
   saveState();
-
-  document.getElementById('chat-name').textContent = conv.name;
-  document.getElementById('chat-prop').textContent = conv.property;
-  const p = getProperty(conv.propertyId);
-  if (p) {
-    document.getElementById('chat-prop-img').src = p.image;
-    document.getElementById('chat-prop-title').textContent = p.title;
-    document.getElementById('chat-prop-price').textContent = formatPrice(p.price, p.period);
-  }
-
-  if (!chatMessages[convId]) {
-    chatMessages[convId] = [
-      { sender: 'received', text: conv.lastMessage || 'Hello! How can I help you with this property?', time: conv.time }
-    ];
-  }
+  renderOpenChatHeader(conv);
+  renderConversations();
   renderChatMessages();
   showScreen('chat');
 }
 
 function renderChatMessages() {
   const container = document.getElementById('chat-messages');
+  if (!container) return;
   const messages = chatMessages[currentChatId] || [];
-  container.innerHTML = messages.map(m => `
-    <div class="msg-bubble ${m.sender === 'sent' ? 'sent' : 'received'}">
-      <div>${escapeHtml(m.text)}</div>
-      <div class="msg-time">${m.time || ''}</div>
-    </div>
-  `).join('');
+  if (!messages.length) {
+    container.innerHTML = '<div class="empty-state" style="padding:60px 20px"><i data-lucide="message-circle"></i><p>Start the conversation about this property.</p></div>';
+  } else {
+    container.innerHTML = messages.map(m => `
+      <div class="msg-bubble ${m.sender === 'sent' ? 'sent' : 'received'}">
+        <div>${escapeHtml(m.text)}</div>
+        <div class="msg-time">${escapeHtml(m.time || '')}</div>
+      </div>
+    `).join('');
+  }
   container.scrollTop = container.scrollHeight;
+  lucide.createIcons();
 }
 
-function escapeHtml(value) {
-  return String(value ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
-}
-
-function sendMessage() {
+async function sendMessage() {
+  if (!(await requireMessageAccess())) return;
+  if (!currentUser || !supabaseClient || !currentChatId) return;
   const input = document.getElementById('chat-input');
   const text = input.value.trim();
-  if (!text || !currentChatId) return;
-  const now = new Date();
-  const time = now.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'});
-  if (!chatMessages[currentChatId]) chatMessages[currentChatId] = [];
-  chatMessages[currentChatId].push({sender:'sent', text, time});
-  const conv = conversations.find(c => c.id === currentChatId);
-  if (conv) { conv.lastMessage = text; conv.time = time; conv.unread = false; }
-  input.value = '';
-  saveState();
-  renderChatMessages();
+  if (!text) return;
+
+  const conv = conversations.find(c => String(c.id) === String(currentChatId));
+  if (!conv?.propertyId || !conv?.otherUserId) {
+    toast('Open a property and choose Chat with Owner first.');
+    return;
+  }
+
+  const sendButton = document.querySelector('.chat-send');
+  if (sendButton) sendButton.disabled = true;
+  input.disabled = true;
+
+  try {
+    const { data, error } = await supabaseClient
+      .from('messages')
+      .insert({
+        sender_id: currentUser.id,
+        receiver_id: conv.otherUserId,
+        property_id: conv.propertyId,
+        content: text
+      })
+      .select('id,sender_id,receiver_id,property_id,content,created_at,read_at')
+      .single();
+    if (error) throw error;
+
+    input.value = '';
+    const message = {
+      id: data.id,
+      sender: 'sent',
+      text: data.content,
+      time: formatChatTime(data.created_at),
+      createdAt: data.created_at
+    };
+    if (!chatMessages[currentChatId]) chatMessages[currentChatId] = [];
+    chatMessages[currentChatId].push(message);
+    conv.lastMessage = data.content;
+    conv.time = formatChatTime(data.created_at);
+    conv.unread = false;
+    saveState();
+    renderChatMessages();
+    renderConversations();
+  } catch (error) {
+    console.error('NestFind send message error:', error);
+    toast(error?.message || 'Message could not be sent.');
+  } finally {
+    input.disabled = false;
+    if (sendButton) sendButton.disabled = false;
+    input.focus();
+  }
+}
+
+let realtimeMessageChannel = null;
+
+function stopRealtimeMessages() {
+  if (realtimeMessageChannel && supabaseClient) {
+    supabaseClient.removeChannel(realtimeMessageChannel);
+  }
+  realtimeMessageChannel = null;
+}
+
+function startRealtimeMessages() {
+  stopRealtimeMessages();
+  if (!supabaseClient || !currentUser) return;
+
+  const userId = String(currentUser.id);
+  realtimeMessageChannel = supabaseClient
+    .channel(`nestfind-messages-${userId}`)
+    .on('postgres_changes', {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'messages',
+      filter: `receiver_id=eq.${userId}`
+    }, async (payload) => {
+      const row = payload.new;
+      if (!row?.property_id || !row?.content) return;
+
+      const convId = conversationKey(row.property_id, row.sender_id);
+      let conv = conversations.find(c => String(c.id) === convId);
+      if (!conv) {
+        conv = {
+          id: convId,
+          propertyId: row.property_id,
+          otherUserId: row.sender_id,
+          name: 'NestFind Member',
+          avatar: '',
+          property: 'Property conversation',
+          lastMessage: '',
+          time: '',
+          unread: true,
+          real: true
+        };
+        conversations.unshift(conv);
+      }
+
+      conv.name = await resolveConversationName(conv);
+      const p = getConversationProperty(conv);
+      if (p) {
+        conv.property = `${p.title} - ${p.area || p.location || ''}`;
+        conv.avatar = p.ownerAvatar || '';
+      }
+      conv.lastMessage = row.content;
+      conv.time = formatChatTime(row.created_at);
+      const isOpen = String(currentChatId) === String(conv.id) && document.getElementById('screen-chat')?.classList.contains('active');
+      conv.unread = !isOpen;
+
+      if (!chatMessages[conv.id]) chatMessages[conv.id] = [];
+      const exists = chatMessages[conv.id].some(m => String(m.id) === String(row.id));
+      if (!exists) {
+        chatMessages[conv.id].push({
+          id: row.id,
+          sender: 'received',
+          text: row.content,
+          time: formatChatTime(row.created_at),
+          createdAt: row.created_at
+        });
+      }
+
+      saveState();
+      renderConversations();
+      if (isOpen) renderChatMessages();
+      else toast(`New message from ${conv.name}`);
+      updateProfileCounts();
+    })
+    .subscribe((status) => {
+      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+        console.warn('NestFind Realtime chat status:', status);
+      }
+    });
 }
 
 // ==================== ADD PROPERTY ====================
@@ -4676,9 +4993,14 @@ async function initNestFind() {
         await loadCurrentUserData();
         await loadSupabaseProperties();
         await loadViewingRequests();
+        await loadRemoteConversations();
+        startRealtimeMessages();
       } else {
         localStorage.removeItem('nf_user');
         viewings = [];
+        conversations = [];
+        chatMessages = {};
+        stopRealtimeMessages();
         saveState();
       }
       updateProfileUI();
@@ -4690,6 +5012,8 @@ async function initNestFind() {
     await loadPremiumStatus();
     await loadMessageAccessStatus();
     await loadViewingRequests();
+    await loadRemoteConversations();
+    startRealtimeMessages();
   }
   lucide.createIcons();
 }
