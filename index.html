@@ -1052,6 +1052,24 @@ body {
 }
 
 /* ========== MESSAGES ========== */
+
+/* ========== NOTIFICATIONS ========== */
+.notification-list { padding: 10px 16px 24px; overflow:auto; flex:1; }
+.notification-item { display:flex; gap:12px; align-items:flex-start; padding:14px 4px; border-bottom:1px solid var(--border-light); cursor:pointer; }
+.notification-item.unread { background:var(--primary-light); margin:0 -8px; padding-left:12px; padding-right:12px; border-radius:12px; border-bottom-color:transparent; }
+.notification-icon { width:42px; height:42px; border-radius:12px; background:var(--primary-light); color:var(--primary); display:flex; align-items:center; justify-content:center; flex:0 0 42px; }
+.notification-item.unread .notification-icon { background:#fff; }
+.notification-body { min-width:0; flex:1; }
+.notification-top { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
+.notification-title { font-size:14px; font-weight:700; color:var(--text); }
+.notification-time { font-size:10px; color:var(--text-muted); white-space:nowrap; }
+.notification-text { font-size:12px; color:var(--text-secondary); margin-top:3px; line-height:1.45; }
+.notification-unread-dot { width:7px; height:7px; border-radius:50%; background:var(--primary); flex:0 0 7px; margin-top:7px; }
+.notification-actions { padding:10px 16px 4px; display:flex; justify-content:flex-end; }
+.notification-mark-all { border:0; background:none; color:var(--primary); font-size:12px; font-weight:700; cursor:pointer; }
+.bell-wrap { position:relative; display:inline-flex; }
+.bell-badge { position:absolute; top:-4px; right:-4px; min-width:17px; height:17px; padding:0 4px; border-radius:9px; background:#dc2626; color:#fff; font-size:9px; font-weight:800; display:flex; align-items:center; justify-content:center; border:2px solid var(--bg); }
+
 .messages-search {
   padding: 12px 16px;
   background: var(--card);
@@ -1941,8 +1959,8 @@ body {
             </div>
           </div>
         </div>
-        <button class="icon-btn" onclick="toast('No new notifications')">
-          <i data-lucide="bell"></i>
+        <button class="icon-btn" type="button" onclick="openNotifications()" aria-label="Notifications">
+          <span class="bell-wrap"><i data-lucide="bell"></i><span class="bell-badge" id="notification-badge" style="display:none">0</span></span>
         </button>
       </div>
       <div class="search-bar" onclick="showScreen('search'); document.getElementById('search-input').focus()">
@@ -2114,6 +2132,19 @@ body {
       <button class="nav-item active" data-nav="messages" onclick="navTo('messages')"><i data-lucide="message-circle"></i><span>Messages</span></button>
       <button class="nav-item" data-nav="profile" onclick="navTo('profile')"><i data-lucide="user"></i><span>Profile</span></button>
     </nav>
+  </div>
+
+  <!-- ========== NOTIFICATIONS ========== -->
+  <div class="screen" id="screen-notifications">
+    <div class="header">
+      <button class="header-back" onclick="goBack()"><i data-lucide="arrow-left"></i></button>
+      <div class="header-title">Notifications</div>
+      <button class="icon-btn" type="button" onclick="markAllNotificationsRead()" aria-label="Mark all as read"><i data-lucide="check-check"></i></button>
+    </div>
+    <div class="notification-actions">
+      <button class="notification-mark-all" type="button" onclick="markAllNotificationsRead()">Mark all as read</button>
+    </div>
+    <div class="notification-list" id="notification-list"></div>
   </div>
 
   <!-- ========== CHAT ========== -->
@@ -2328,6 +2359,14 @@ body {
           <div class="profile-menu-text">
             <div class="profile-menu-title">Saved Properties</div>
             <div class="profile-menu-desc" id="count-saved">0 saved properties</div>
+          </div>
+          <div class="profile-menu-arrow"><i data-lucide="chevron-right"></i></div>
+        </div>
+        <div class="profile-menu-item" onclick="openNotifications()">
+          <div class="profile-menu-icon"><i data-lucide="bell"></i></div>
+          <div class="profile-menu-text">
+            <div class="profile-menu-title">Notifications</div>
+            <div class="profile-menu-desc" id="count-notifications">0 unread notifications</div>
           </div>
           <div class="profile-menu-arrow"><i data-lucide="chevron-right"></i></div>
         </div>
@@ -2742,6 +2781,8 @@ let favorites = JSON.parse(localStorage.getItem('nf_favorites') || '[]');
 let conversations = JSON.parse(localStorage.getItem('nf_conversations') || 'null') || DEFAULT_CONVERSATIONS;
 let chatMessages = JSON.parse(localStorage.getItem('nf_chat_messages') || '{}');
 let viewings = JSON.parse(localStorage.getItem('nf_viewings') || '[]');
+let notifications = JSON.parse(localStorage.getItem('nf_notifications') || '[]');
+let realtimeNotificationChannel = null;
 let userListings = JSON.parse(localStorage.getItem('nf_listings') || '[]');
 let currentPropertyId = null;
 let currentChatId = null;
@@ -3011,6 +3052,7 @@ function saveState() {
   localStorage.setItem('nf_conversations', JSON.stringify(conversations));
   localStorage.setItem('nf_chat_messages', JSON.stringify(chatMessages));
   localStorage.setItem('nf_viewings', JSON.stringify(viewings));
+  localStorage.setItem('nf_notifications', JSON.stringify(notifications));
   localStorage.setItem('nf_listings', JSON.stringify(userListings));
   if (currentUser) localStorage.setItem('nf_user', JSON.stringify(currentUser));
 }
@@ -3033,6 +3075,7 @@ function showScreen(id) {
   if (id === 'home') renderHome();
   if (id === 'search') runSearch();
   if (id === 'messages') renderConversations();
+  if (id === 'notifications') renderNotifications();
   if (id === 'profile') updateProfileCounts();
   if (id === 'map') renderMap();
   if (id === 'add') {
@@ -3560,6 +3603,187 @@ async function resolveConversationName(conv) {
     if (data?.email) return data.email.split('@')[0];
   } catch (e) {}
   return conv?.name || 'NestFind Member';
+}
+
+function notificationIcon(type) {
+  if (type === 'message') return 'message-circle';
+  if (type === 'viewing_request') return 'calendar-plus';
+  if (type === 'viewing_accepted') return 'calendar-check';
+  if (type === 'viewing_declined') return 'calendar-x';
+  return 'bell';
+}
+
+function notificationTime(value) {
+  if (!value) return '';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  const diff = Date.now() - d.getTime();
+  if (diff < 60 * 1000) return 'Just now';
+  if (diff < 60 * 60 * 1000) return `${Math.floor(diff / 60000)}m ago`;
+  if (diff < 24 * 60 * 60 * 1000) return `${Math.floor(diff / 3600000)}h ago`;
+  if (diff < 7 * 24 * 60 * 60 * 1000) return `${Math.floor(diff / 86400000)}d ago`;
+  return d.toLocaleDateString('en-NG', { day:'numeric', month:'short' });
+}
+
+function notificationUnreadCount() {
+  return notifications.filter(n => !n.read).length;
+}
+
+function updateNotificationBadge() {
+  const count = notificationUnreadCount();
+  const badge = document.getElementById('notification-badge');
+  if (badge) {
+    badge.textContent = count > 99 ? '99+' : String(count);
+    badge.style.display = count ? 'flex' : 'none';
+  }
+  const profile = document.getElementById('count-notifications');
+  if (profile) profile.textContent = `${count} unread notification${count === 1 ? '' : 's'}`;
+}
+
+function renderNotifications() {
+  const container = document.getElementById('notification-list');
+  if (!container) return;
+  if (!notifications.length) {
+    container.innerHTML = '<div class="empty-state" style="padding:70px 20px"><i data-lucide="bell-off"></i><p>No notifications yet.<br>Messages and viewing updates will appear here.</p></div>';
+    lucide.createIcons();
+    updateNotificationBadge();
+    return;
+  }
+
+  container.innerHTML = notifications.map(n => `
+    <div class="notification-item ${n.read ? '' : 'unread'}" data-notification-id="${escapeHtml(n.id)}">
+      <div class="notification-icon"><i data-lucide="${escapeHtml(notificationIcon(n.type))}"></i></div>
+      <div class="notification-body">
+        <div class="notification-top">
+          <div class="notification-title">${escapeHtml(n.title || 'NestFind Notification')}</div>
+          <div class="notification-time">${escapeHtml(notificationTime(n.created_at || n.createdAt))}</div>
+        </div>
+        <div class="notification-text">${escapeHtml(n.body || '')}</div>
+      </div>
+      ${n.read ? '' : '<div class="notification-unread-dot"></div>'}
+    </div>`).join('');
+
+  container.querySelectorAll('[data-notification-id]').forEach(item => {
+    item.addEventListener('click', () => handleNotificationClick(item.getAttribute('data-notification-id')));
+  });
+  lucide.createIcons();
+  updateNotificationBadge();
+}
+
+async function loadNotifications() {
+  if (!currentUser || !supabaseClient) {
+    notifications = [];
+    updateNotificationBadge();
+    renderNotifications();
+    return;
+  }
+  try {
+    const { data, error } = await supabaseClient
+      .from('notifications')
+      .select('id,user_id,type,title,body,actor_id,property_id,viewing_request_id,message_id,is_read,created_at')
+      .eq('user_id', currentUser.id)
+      .order('created_at', { ascending: false })
+      .limit(100);
+    if (error) throw error;
+    notifications = (data || []).map(row => ({
+      ...row,
+      read: !!row.is_read
+    }));
+    saveState();
+    renderNotifications();
+  } catch (error) {
+    console.error('NestFind notifications load error:', error);
+    toast(error?.message || 'Could not load notifications.');
+  }
+}
+
+async function markNotificationRead(id) {
+  const key = String(id);
+  const item = notifications.find(n => String(n.id) === key);
+  if (!item || item.read) return;
+  item.read = true;
+  item.is_read = true;
+  saveState();
+  renderNotifications();
+  if (!supabaseClient || !currentUser) return;
+  try {
+    await supabaseClient.from('notifications').update({ is_read: true }).eq('id', id).eq('user_id', currentUser.id);
+  } catch (error) {
+    console.warn('Could not mark notification read:', error);
+  }
+}
+
+async function markAllNotificationsRead() {
+  const unread = notifications.filter(n => !n.read);
+  if (!unread.length) { toast('All notifications are already read.'); return; }
+  notifications.forEach(n => { n.read = true; n.is_read = true; });
+  saveState();
+  renderNotifications();
+  if (supabaseClient && currentUser) {
+    try {
+      const { error } = await supabaseClient.from('notifications').update({ is_read: true }).eq('user_id', currentUser.id).eq('is_read', false);
+      if (error) throw error;
+    } catch (error) {
+      console.warn('Could not mark all notifications read:', error);
+    }
+  }
+  toast('All notifications marked as read.');
+}
+
+async function handleNotificationClick(id) {
+  const n = notifications.find(item => String(item.id) === String(id));
+  if (!n) return;
+  await markNotificationRead(id);
+
+  if (n.type === 'message' && n.property_id && n.actor_id) {
+    const convId = conversationKey(n.property_id, n.actor_id);
+    if (!conversations.some(c => String(c.id) === String(convId))) await loadRemoteConversations();
+    const conv = conversations.find(c => String(c.id) === String(convId));
+    if (conv) {
+      await openChat(conv.id);
+      return;
+    }
+  }
+
+  if (n.type === 'viewing_request' || n.type === 'viewing_accepted' || n.type === 'viewing_declined') {
+    await showViewings();
+    return;
+  }
+
+  showScreen('notifications');
+}
+
+function openNotifications() {
+  if (!currentUser) { toast('Please sign in first.'); showScreen('auth'); return; }
+  showScreen('notifications');
+  loadNotifications();
+}
+
+function stopRealtimeNotifications() {
+  if (realtimeNotificationChannel && supabaseClient) supabaseClient.removeChannel(realtimeNotificationChannel);
+  realtimeNotificationChannel = null;
+}
+
+function startRealtimeNotifications() {
+  stopRealtimeNotifications();
+  if (!supabaseClient || !currentUser) return;
+  const userId = String(currentUser.id);
+  realtimeNotificationChannel = supabaseClient
+    .channel(`nestfind-notifications-${userId}`)
+    .on('postgres_changes', {
+      event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}`
+    }, payload => {
+      const row = payload.new;
+      if (!row?.id) return;
+      if (notifications.some(n => String(n.id) === String(row.id))) return;
+      notifications.unshift({ ...row, read: !!row.is_read });
+      notifications = notifications.slice(0, 100);
+      saveState();
+      updateNotificationBadge();
+      renderNotifications();
+      toast(row.title || 'New NestFind notification');
+    })
+    .subscribe(status => console.log('NestFind notifications realtime:', status));
 }
 
 async function loadRemoteConversations() {
@@ -4400,6 +4624,7 @@ function resetListingForm() {
 
 // ==================== PROFILE ====================
 function updateProfileCounts() {
+  updateNotificationBadge();
   loadMessageAccessStatus().then(() => {
     const msgEl = document.getElementById('count-messages');
     if (msgEl) msgEl.textContent = messageAccessUntil > Date.now() ? (messageAccessUntil === Number.POSITIVE_INFINITY ? 'Messaging active · Permanent' : `Messaging active · ${formatAccessRemaining(messageAccessUntil)} left`) : '7-day free trial · ₦2,000 one-time after trial';
@@ -5092,6 +5317,8 @@ async function initNestFind() {
   bindDetailChatButton();
   renderHome();
   renderConversations();
+  renderNotifications();
+  updateNotificationBadge();
   updateProfileUI();
   const { data } = supabaseClient ? await supabaseClient.auth.getSession() : { data:{session:null} };
   if (data?.session?.user) {
@@ -5111,13 +5338,17 @@ async function initNestFind() {
         await loadSupabaseProperties();
         await loadViewingRequests();
         await loadRemoteConversations();
+        await loadNotifications();
         startRealtimeMessages();
+        startRealtimeNotifications();
       } else {
         localStorage.removeItem('nf_user');
         viewings = [];
         conversations = [];
         chatMessages = {};
         stopRealtimeMessages();
+        stopRealtimeNotifications();
+        notifications = [];
         saveState();
       }
       updateProfileUI();
@@ -5130,7 +5361,9 @@ async function initNestFind() {
     await loadMessageAccessStatus();
     await loadViewingRequests();
     await loadRemoteConversations();
+    await loadNotifications();
     startRealtimeMessages();
+    startRealtimeNotifications();
   }
   lucide.createIcons();
 }
