@@ -1863,6 +1863,43 @@ body {
 .viewing-card-status.requested,.viewing-card-status.pending{background:#eef8f3;color:var(--primary)}
 .viewing-actions{animation:viewingActionsIn .18s ease-out}
 @keyframes viewingActionsIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+
+
+/* ==================== TRUST & SAFETY ==================== */
+.owner-card{display:flex;align-items:center;gap:12px;padding:14px;background:var(--card);border:1px solid var(--border);border-radius:14px;margin:14px 0;cursor:pointer}
+.owner-card:hover{box-shadow:var(--shadow)}
+.owner-card-avatar{width:46px;height:46px;border-radius:50%;object-fit:cover;background:var(--primary-light)}
+.owner-card-info{flex:1;min-width:0}
+.owner-card-name{font-size:14px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:5px}
+.owner-card-sub{font-size:12px;color:var(--text-muted);margin-top:2px}
+.owner-verified{display:inline-flex;align-items:center;gap:4px;color:var(--primary);font-size:11px;font-weight:700}
+.owner-verified svg{width:14px;height:14px}
+.trust-pills{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}
+.trust-pill{display:inline-flex;align-items:center;gap:5px;padding:5px 8px;border-radius:999px;background:var(--primary-light);color:var(--primary);font-size:10px;font-weight:700}
+.trust-pill.neutral{background:#f1f3f5;color:var(--text-secondary)}
+.trust-pill svg{width:12px;height:12px}
+.trust-list{padding:18px}
+.trust-profile-card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:20px;text-align:center;box-shadow:var(--shadow)}
+.trust-profile-avatar{width:86px;height:86px;border-radius:50%;object-fit:cover;background:var(--primary-light);margin:0 auto 12px}
+.trust-profile-name{font-size:20px;font-weight:800}
+.trust-profile-email{font-size:12px;color:var(--text-muted);margin-top:3px}
+.trust-profile-bio{font-size:13px;color:var(--text-secondary);margin:12px 0;line-height:1.6}
+.trust-profile-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:18px 0}
+.trust-stat{background:var(--bg);border-radius:12px;padding:11px 6px}
+.trust-stat strong{display:block;font-size:16px;color:var(--text)}
+.trust-stat span{font-size:10px;color:var(--text-muted)}
+.trust-section-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;margin-top:12px}
+.trust-section-card h3{font-size:14px;margin-bottom:10px}
+.trust-check{display:flex;gap:9px;align-items:flex-start;font-size:12px;color:var(--text-secondary);margin:9px 0}
+.trust-check svg{width:16px;height:16px;color:var(--primary);flex:0 0 auto;margin-top:1px}
+.report-choice{display:flex;align-items:center;gap:10px;padding:13px;border:1px solid var(--border);border-radius:12px;margin:8px 0;cursor:pointer}
+.report-choice input{accent-color:var(--primary)}
+.report-choice-text{font-size:13px;font-weight:600}
+.report-details{min-height:90px;resize:none}
+.report-warning{font-size:11px;color:var(--text-muted);line-height:1.5;margin-top:10px}
+.status-banner{display:flex;gap:9px;align-items:flex-start;padding:12px;border-radius:12px;background:var(--primary-light);color:var(--primary);font-size:12px;line-height:1.5;margin-top:12px}
+.status-banner svg{width:17px;height:17px;flex:0 0 auto}
+
 </style>
 </head>
 <body>
@@ -2082,6 +2119,16 @@ body {
       <button class="btn-outline" id="detail-chat-btn" type="button"><i data-lucide="message-circle"></i> Chat with Owner</button>
       <button class="btn-primary" onclick="openScheduleModal()"><i data-lucide="calendar"></i> Schedule Viewing</button>
     </div>
+  </div>
+
+  <!-- ========== OWNER PROFILE ========== -->
+  <div class="screen" id="screen-owner-profile">
+    <div class="header">
+      <button class="header-back" onclick="goBack()"><i data-lucide="arrow-left"></i></button>
+      <div class="header-title">Owner Profile</div>
+      <button class="icon-btn" type="button" onclick="openUserReport(currentOwnerProfileId)"><i data-lucide="flag"></i></button>
+    </div>
+    <div class="scroll-content no-nav trust-list" id="owner-profile-content"></div>
   </div>
 
   <!-- ========== MAP ========== -->
@@ -2432,6 +2479,29 @@ body {
   </div>
 
   <!-- ========== SCHEDULE MODAL ========== -->
+  <!-- ========== REPORT MODAL ========== -->
+  <div class="modal-overlay" id="report-modal">
+    <div class="modal-sheet" style="position:relative">
+      <div class="modal-handle"></div>
+      <button class="modal-close" onclick="closeModal('report-modal')"><i data-lucide="x"></i></button>
+      <div class="modal-title" id="report-modal-title">Report</div>
+      <div id="report-target-label" style="font-size:12px;color:var(--text-muted);margin:-4px 0 12px"></div>
+      <div id="report-reasons">
+        <label class="report-choice"><input type="radio" name="reportReason" value="Scam or fraud"><span class="report-choice-text">Scam or fraud</span></label>
+        <label class="report-choice"><input type="radio" name="reportReason" value="Fake or misleading information"><span class="report-choice-text">Fake or misleading information</span></label>
+        <label class="report-choice"><input type="radio" name="reportReason" value="Duplicate or copied listing"><span class="report-choice-text">Duplicate or copied listing</span></label>
+        <label class="report-choice"><input type="radio" name="reportReason" value="Harassment or inappropriate behavior"><span class="report-choice-text">Harassment or inappropriate behavior</span></label>
+        <label class="report-choice"><input type="radio" name="reportReason" value="Other"><span class="report-choice-text">Other</span></label>
+      </div>
+      <div class="form-group" style="margin-top:12px">
+        <label>Additional details (optional)</label>
+        <textarea id="report-details" class="report-details" placeholder="Tell us what happened or what looks suspicious..."></textarea>
+      </div>
+      <div class="report-warning">Reports are reviewed by NestFind. Do not include passwords, card details, OTP codes, or other sensitive information.</div>
+      <button class="btn-primary" style="margin-top:14px" type="button" onclick="submitTrustReport()">Submit Report</button>
+    </div>
+  </div>
+
   <div class="modal-overlay" id="schedule-modal">
     <div class="modal-sheet" style="position:relative">
       <div class="modal-handle"></div>
@@ -2785,6 +2855,9 @@ let notifications = JSON.parse(localStorage.getItem('nf_notifications') || '[]')
 let realtimeNotificationChannel = null;
 let userListings = JSON.parse(localStorage.getItem('nf_listings') || '[]');
 let currentPropertyId = null;
+let currentOwnerProfileId = null;
+let trustReportTarget = { type: null, propertyId: null, userId: null };
+let ownerProfileCache = {};
 let currentChatId = null;
 let currentChatPropertyId = null;
 let searchType = 'all';
@@ -3182,7 +3255,7 @@ function propListHTML(p) {
           ${p.baths ? `<span><i data-lucide="bath"></i> ${p.baths}</span>` : ''}
           ${p.parking ? `<span><i data-lucide="car"></i> ${p.parking}</span>` : ''}
         </div>
-        ${p.verified ? `<div class="verified-badge"><i data-lucide="badge-check"></i> Verified Owner</div>` : ''}
+        ${p.verified ? `<div class="verified-badge"><i data-lucide="badge-check"></i> Verified Listing</div>` : ''}
       </div>
     </div>`;
 }
@@ -3339,7 +3412,7 @@ function openProperty(id) {
     <div class="detail-price">${formatPrice(p.price, p.period)}</div>
     <div class="detail-title">${p.title}</div>
     <div class="detail-loc"><i data-lucide="map-pin"></i> ${p.location}</div>
-    ${p.verified ? '<div class="detail-verified"><i data-lucide="badge-check"></i> Verified Owner</div>' : ''}
+    ${p.verified ? '<div class="detail-verified"><i data-lucide="badge-check"></i> Verified Listing</div>' : ''}
     <div class="detail-stats">
       ${p.beds ? `<div class="stat-item"><i data-lucide="bed"></i> ${p.beds} beds</div>` : ''}
       ${p.baths ? `<div class="stat-item"><i data-lucide="bath"></i> ${p.baths} baths</div>` : ''}
@@ -3357,10 +3430,18 @@ function openProperty(id) {
         ${(p.amenities || []).map(a => `<div class="amenity-item"><i data-lucide="check-circle-2"></i> ${a}</div>`).join('')}
       </div>
     </div>
-    <div class="safety-notice">
-      Safety first: NestFind does not collect, hold, or transfer property payments. Always inspect the property and make payment arrangements directly with the owner or agent after verifying the property.
+    <div class="owner-card" onclick='openOwnerProfile(${JSON.stringify(String(p.ownerId || ''))})'>
+      <img class="owner-card-avatar" src="${p.ownerAvatar || 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&q=80'}" alt="Property owner">
+      <div class="owner-card-info">
+        <div class="owner-card-name">${escapeHtml(p.owner || 'Property Owner')} ${p.ownerVerified ? '<span class="owner-verified"><i data-lucide="badge-check"></i> Verified</span>' : ''}</div>
+        <div class="owner-card-sub">View owner profile · ${p.ownerListingCount || 1} listing${p.ownerListingCount === 1 ? '' : 's'}</div>
+      </div>
+      <i data-lucide="chevron-right" style="width:18px;color:var(--text-muted)"></i>
     </div>
-    <button class="report-btn" onclick="toast('Report submitted. Our team will review this listing.')">Report Property</button>
+    <div class="safety-notice">
+      <strong>Safety first:</strong> NestFind does not collect, hold, or transfer property payments. Never send money before inspecting a property and verifying the owner. Report suspicious listings or users to NestFind.
+    </div>
+    <button class="report-btn" type="button" onclick='openPropertyReport(${JSON.stringify(String(p.id))})'><i data-lucide="flag" style="width:14px;height:14px;vertical-align:-2px"></i> Report Property</button>
   `;
   showScreen('detail');
   lucide.createIcons();
@@ -5247,8 +5328,11 @@ function dbPropertyToApp(row) {
     description: row.description || '',
     amenities: Array.isArray(row.amenities) ? row.amenities : [],
     videoUrl: row.video_url || '',
-    owner: 'Property Owner',
-    ownerAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&q=80',
+    owner: ownerProfileCache[String(row.owner_id)]?.full_name || 'Property Owner',
+    ownerAvatar: ownerProfileCache[String(row.owner_id)]?.avatar_url || 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&q=80',
+    ownerVerified: !!ownerProfileCache[String(row.owner_id)]?.verified_owner,
+    ownerBio: ownerProfileCache[String(row.owner_id)]?.bio || '',
+    ownerListingCount: ownerProfileCache[String(row.owner_id)]?.listing_count || 1,
     ownerId: row.owner_id,
     created: row.created_at || '',
     featured: !!row.is_featured,
@@ -5289,6 +5373,137 @@ async function loadCurrentUserData() {
   updateProfileUI();
 }
 
+async function loadPublicOwnerProfiles(ownerIds) {
+  if (!supabaseClient || !ownerIds?.length) return;
+  try {
+    const unique = [...new Set(ownerIds.map(String).filter(Boolean))];
+    const { data, error } = await supabaseClient
+      .from('owner_public_profiles')
+      .select('id,full_name,avatar_url,bio,verified_owner,joined_at,listing_count')
+      .in('id', unique);
+    if (error) throw error;
+    (data || []).forEach(row => { ownerProfileCache[String(row.id)] = row; });
+  } catch (error) {
+    console.warn('Could not load public owner profiles:', error);
+  }
+}
+
+async function openOwnerProfile(ownerId) {
+  const id = String(ownerId || '');
+  if (!id) { toast('Owner profile is not available for this listing.'); return; }
+  currentOwnerProfileId = id;
+  const container = document.getElementById('owner-profile-content');
+  if (!container) return;
+  container.innerHTML = '<div class="empty-state" style="padding:70px 20px"><i data-lucide="loader-circle"></i><p>Loading owner profile…</p></div>';
+  showScreen('owner-profile');
+  try {
+    if (!ownerProfileCache[id] && supabaseClient) await loadPublicOwnerProfiles([id]);
+    const profile = ownerProfileCache[id] || { id, full_name:'Property Owner', avatar_url:'', bio:'', verified_owner:false, listing_count:0 };
+    const listings = allProperties.filter(p => String(p.ownerId || '') === id);
+    const name = profile.full_name || 'Property Owner';
+    const avatar = profile.avatar_url || 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=160&q=80';
+    const joined = profile.joined_at ? new Date(profile.joined_at).toLocaleDateString('en-NG',{month:'long',year:'numeric'}) : '';
+    container.innerHTML = `
+      <div class="trust-profile-card">
+        <img class="trust-profile-avatar" src="${avatar}" alt="${escapeHtml(name)}">
+        <div class="trust-profile-name">${escapeHtml(name)} ${profile.verified_owner ? '<span class="owner-verified"><i data-lucide="badge-check"></i> Verified Owner</span>' : ''}</div>
+        <div class="trust-profile-email">${joined ? `NestFind member since ${escapeHtml(joined)}` : 'NestFind member'}</div>
+        ${profile.bio ? `<div class="trust-profile-bio">${escapeHtml(profile.bio)}</div>` : ''}
+        <div class="trust-profile-stats">
+          <div class="trust-stat"><strong>${listings.length}</strong><span>Active listings</span></div>
+          <div class="trust-stat"><strong>${profile.verified_owner ? 'Yes' : 'No'}</strong><span>Identity status</span></div>
+          <div class="trust-stat"><strong>—</strong><span>Response rating</span></div>
+        </div>
+        <div class="trust-pills">
+          ${profile.verified_owner ? '<span class="trust-pill"><i data-lucide="badge-check"></i> Verified owner</span>' : '<span class="trust-pill neutral"><i data-lucide="shield-question"></i> Verification pending</span>'}
+          <span class="trust-pill"><i data-lucide="message-circle"></i> In-app chat</span>
+          <span class="trust-pill"><i data-lucide="calendar-check"></i> Viewing requests</span>
+        </div>
+      </div>
+      <div class="trust-section-card">
+        <h3>Safety checklist</h3>
+        <div class="trust-check"><i data-lucide="check-circle-2"></i><span>Inspect the property before sending any property payment.</span></div>
+        <div class="trust-check"><i data-lucide="check-circle-2"></i><span>Keep conversations and viewing arrangements inside NestFind when possible.</span></div>
+        <div class="trust-check"><i data-lucide="check-circle-2"></i><span>Report requests for OTPs, card details, or unusual upfront transfers.</span></div>
+      </div>
+      <button class="btn-outline" style="width:100%;margin-top:12px" type="button" onclick='openUserReport(${JSON.stringify(id)})'><i data-lucide="flag"></i> Report this user</button>
+    `;
+    lucide.createIcons();
+  } catch (error) {
+    console.error('Owner profile error:', error);
+    toast(error?.message || 'Could not load owner profile.');
+  }
+}
+
+function openPropertyReport(propertyId) {
+  const p = getProperty(propertyId);
+  if (!p) { toast('Property not found.'); return; }
+  trustReportTarget = { type:'property', propertyId:String(propertyId), userId:String(p.ownerId || '') };
+  document.getElementById('report-modal-title').textContent = 'Report Property';
+  document.getElementById('report-target-label').textContent = p.title || 'Selected property';
+  document.getElementById('report-modal').classList.add('active');
+  resetReportForm();
+  lucide.createIcons();
+}
+
+function openUserReport(userId) {
+  const id = String(userId || currentOwnerProfileId || '');
+  if (!id) { toast('User profile is not available.'); return; }
+  trustReportTarget = { type:'user', propertyId:null, userId:id };
+  const profile = ownerProfileCache[id];
+  document.getElementById('report-modal-title').textContent = 'Report User';
+  document.getElementById('report-target-label').textContent = profile?.full_name || 'NestFind member';
+  document.getElementById('report-modal').classList.add('active');
+  resetReportForm();
+  lucide.createIcons();
+}
+
+function resetReportForm() {
+  document.querySelectorAll('input[name="reportReason"]').forEach(r => r.checked = false);
+  const details = document.getElementById('report-details');
+  if (details) details.value = '';
+}
+
+async function submitTrustReport() {
+  if (!currentUser) { toast('Please sign in before submitting a report.'); closeModal('report-modal'); showScreen('auth'); return; }
+  if (!supabaseClient) { toast('Reporting is unavailable right now.'); return; }
+  const reason = document.querySelector('input[name="reportReason"]:checked')?.value;
+  const details = document.getElementById('report-details')?.value.trim() || '';
+  if (!reason) { toast('Choose a reason for the report.'); return; }
+  if (!trustReportTarget.type) { toast('Report target is missing.'); return; }
+  const button = document.querySelector('#report-modal .btn-primary');
+  if (button) { button.disabled = true; button.textContent = 'Submitting…'; }
+  try {
+    if (trustReportTarget.type === 'property') {
+      const { error } = await supabaseClient.from('property_reports').insert({
+        property_id: trustReportTarget.propertyId,
+        reporter_id: currentUser.id,
+        reported_user_id: trustReportTarget.userId || null,
+        reason,
+        details: details || null,
+        status:'open'
+      });
+      if (error) throw error;
+    } else {
+      const { error } = await supabaseClient.from('user_reports').insert({
+        reported_user_id: trustReportTarget.userId,
+        reporter_id: currentUser.id,
+        reason,
+        details: details || null,
+        status:'open'
+      });
+      if (error) throw error;
+    }
+    closeModal('report-modal');
+    toast('Report submitted. NestFind will review it.');
+  } catch (error) {
+    console.error('NestFind trust report error:', error);
+    toast(error?.message || 'Could not submit report. Please try again.');
+  } finally {
+    if (button) { button.disabled = false; button.textContent = 'Submit Report'; }
+  }
+}
+
 async function loadSupabaseProperties() {
   if (!supabaseClient) return;
   try {
@@ -5298,6 +5513,7 @@ async function loadSupabaseProperties() {
       .eq('status', 'active')
       .order('created_at', { ascending: false });
     if (error) throw error;
+    await loadPublicOwnerProfiles((data || []).map(row => row.owner_id));
     const remote = (data || []).map(dbPropertyToApp);
     const seedIds = new Set(PROPERTIES.map(p => String(p.id)));
     userListings = remote.filter(p => !seedIds.has(String(p.id)));
