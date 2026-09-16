@@ -2061,7 +2061,7 @@ body {
     </div>
     <div class="detail-body" id="detail-body"></div>
     <div class="detail-actions">
-      <button class="btn-outline" id="detail-chat-btn" onclick="handleDetailChatClick()"><i data-lucide="message-circle"></i> Chat with Owner</button>
+      <button class="btn-outline" id="detail-chat-btn" type="button"><i data-lucide="message-circle"></i> Chat with Owner</button>
       <button class="btn-primary" onclick="openScheduleModal()"><i data-lucide="calendar"></i> Schedule Viewing</button>
     </div>
   </div>
@@ -3321,7 +3321,15 @@ function openProperty(id) {
   `;
   showScreen('detail');
   lucide.createIcons();
+  bindDetailChatButton();
   updateDetailChatButton(p);
+}
+
+function bindDetailChatButton() {
+  const button = document.getElementById('detail-chat-btn');
+  if (!button || button.dataset.chatBound === '1') return;
+  button.dataset.chatBound = '1';
+  button.addEventListener('click', handleDetailChatClick);
 }
 
 function updateDetailChatButton(p) {
@@ -3339,17 +3347,84 @@ function updateDetailChatButton(p) {
 }
 
 async function handleDetailChatClick() {
-  const p = getProperty(currentPropertyId);
-  if (!p) { toast('Property not found.'); return; }
-  if (!(await syncAuthenticatedUser())) return;
-  updateDetailChatButton(p);
-  const ownerId = String(p.ownerId || '');
-  const me = String(currentUser?.id || '');
-  if (ownerId && me && ownerId === me) {
-    toast('This is your listing. Sign in with another NestFind account to chat with the owner.');
-    return;
+  const button = document.getElementById('detail-chat-btn');
+  if (button) { button.disabled = true; button.dataset.originalText = button.textContent.trim(); }
+
+  try {
+    const p = getProperty(currentPropertyId);
+    if (!p) {
+      toast('Property not found. Please open the property again.');
+      return;
+    }
+
+    // Always refresh the real Supabase session before doing anything else.
+    if (!(await syncAuthenticatedUser())) {
+      toast('Please sign in to chat with the property owner.');
+      showScreen('auth');
+      return;
+    }
+
+    updateDetailChatButton(p);
+
+    const ownerId = String(p.ownerId || '');
+    const me = String(currentUser?.id || '');
+
+    if (!ownerId) {
+      toast('This listing does not have a connected owner account yet.');
+      return;
+    }
+
+    if (ownerId === me) {
+      toast('This is your listing. Use another NestFind account to chat with the owner.');
+      return;
+    }
+
+    // Create the conversation locally first so the chat screen can open
+    // even if the remote message query is temporarily unavailable.
+    const convId = conversationKey(p.id, ownerId);
+    let conv = conversations.find(c => String(c.id) === String(convId));
+    if (!conv) {
+      conv = {
+        id: convId,
+        propertyId: p.id,
+        otherUserId: ownerId,
+        name: p.owner || 'Property Owner',
+        avatar: p.ownerAvatar || '',
+        property: `${p.title} - ${p.area || p.location || ''}`,
+        lastMessage: '',
+        time: 'New',
+        unread: false,
+        real: true
+      };
+      conversations.unshift(conv);
+    }
+
+    currentChatId = conv.id;
+    currentChatPropertyId = conv.propertyId;
+
+    // Put the user into the chat immediately.
+    renderOpenChatHeader(conv);
+    renderChatMessages();
+    showScreen('chat');
+
+    // Enforce the 7-day trial/payment gate after the chat screen is ready.
+    if (!(await requireMessageAccess())) {
+      return;
+    }
+
+    // Load existing messages, but don't let a read/query error prevent chat UI.
+    await loadRemoteMessagesForConversation(conv);
+    renderOpenChatHeader(conv);
+    renderChatMessages();
+  } catch (error) {
+    console.error('NestFind Chat with Owner error:', error);
+    toast(error?.message || 'Could not open chat. Please try again.');
+  } finally {
+    if (button) {
+      button.disabled = false;
+      updateDetailChatButton(getProperty(currentPropertyId));
+    }
   }
-  await openChatFromDetail();
 }
 
 async function openChatFromDetail() {
@@ -5002,6 +5077,7 @@ async function loadSupabaseProperties() {
 // ==================== INIT ====================
 async function initNestFind() {
   lucide.createIcons();
+  bindDetailChatButton();
   renderHome();
   renderConversations();
   updateProfileUI();
