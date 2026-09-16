@@ -3568,13 +3568,14 @@ async function loadRemoteConversations() {
   try {
     const { data, error } = await supabaseClient
       .from('messages')
-      .select('id,sender_id,receiver_id,property_id,content,created_at,read_at')
+      .select('id,sender_id,receiver_id,property_id,content,message,created_at,read_at')
       .order('created_at', { ascending: true });
     if (error) throw error;
 
     const groups = new Map();
     for (const row of (data || [])) {
-      if (!row.property_id || !row.content) continue;
+      const rowText = String(row.content ?? row.message ?? '').trim();
+      if (!row.property_id || !rowText) continue;
       const sender = String(row.sender_id || '');
       const receiver = String(row.receiver_id || '');
       const me = String(currentUser.id);
@@ -3598,7 +3599,7 @@ async function loadRemoteConversations() {
       }
       const group = groups.get(key);
       group.messages.push(row);
-      group.lastMessage = row.content;
+      group.lastMessage = rowText;
       group.time = formatChatTime(row.created_at);
       if (receiver === me && !row.read_at && key !== String(currentChatId || '')) group.unread = true;
     }
@@ -3619,7 +3620,7 @@ async function loadRemoteConversations() {
       chatMessages[conv.id] = conv.messages.map(m => ({
         id: m.id,
         sender: String(m.sender_id) === String(currentUser.id) ? 'sent' : 'received',
-        text: m.content,
+        text: String(m.content ?? m.message ?? ''),
         time: formatChatTime(m.created_at),
         createdAt: m.created_at
       }));
@@ -3640,7 +3641,7 @@ async function loadRemoteMessagesForConversation(conv) {
     const other = String(conv.otherUserId);
     const { data, error } = await supabaseClient
       .from('messages')
-      .select('id,sender_id,receiver_id,property_id,content,created_at,read_at')
+      .select('id,sender_id,receiver_id,property_id,content,message,created_at,read_at')
       .eq('property_id', conv.propertyId)
       .or(`and(sender_id.eq.${me},receiver_id.eq.${other}),and(sender_id.eq.${other},receiver_id.eq.${me})`)
       .order('created_at', { ascending: true });
@@ -3650,14 +3651,14 @@ async function loadRemoteMessagesForConversation(conv) {
     chatMessages[conv.id] = rows.map(row => ({
       id: row.id,
       sender: String(row.sender_id) === me ? 'sent' : 'received',
-      text: row.content,
+      text: String(row.content ?? row.message ?? ''),
       time: formatChatTime(row.created_at),
       createdAt: row.created_at
     }));
 
     if (rows.length) {
       const last = rows[rows.length - 1];
-      conv.lastMessage = last.content;
+      conv.lastMessage = String(last.content ?? last.message ?? '');
       conv.time = formatChatTime(last.created_at);
     }
     conv.name = await resolveConversationName(conv);
@@ -3788,9 +3789,10 @@ async function sendMessage() {
         sender_id: currentUser.id,
         receiver_id: conv.otherUserId,
         property_id: conv.propertyId,
-        content: text
+        content: text,
+        message: text
       })
-      .select('id,sender_id,receiver_id,property_id,content,created_at,read_at')
+      .select('id,sender_id,receiver_id,property_id,content,message,created_at,read_at')
       .single();
     if (error) throw error;
 
@@ -3798,13 +3800,13 @@ async function sendMessage() {
     const message = {
       id: data.id,
       sender: 'sent',
-      text: data.content,
+      text: String(data.content ?? data.message ?? text),
       time: formatChatTime(data.created_at),
       createdAt: data.created_at
     };
     if (!chatMessages[currentChatId]) chatMessages[currentChatId] = [];
     chatMessages[currentChatId].push(message);
-    conv.lastMessage = data.content;
+    conv.lastMessage = String(data.content ?? data.message ?? text);
     conv.time = formatChatTime(data.created_at);
     conv.unread = false;
     saveState();
@@ -3869,7 +3871,7 @@ function startRealtimeMessages() {
         conv.property = `${p.title} - ${p.area || p.location || ''}`;
         conv.avatar = p.ownerAvatar || '';
       }
-      conv.lastMessage = row.content;
+      conv.lastMessage = rowText;
       conv.time = formatChatTime(row.created_at);
       const isOpen = String(currentChatId) === String(conv.id) && document.getElementById('screen-chat')?.classList.contains('active');
       conv.unread = !isOpen;
@@ -3880,7 +3882,7 @@ function startRealtimeMessages() {
         chatMessages[conv.id].push({
           id: row.id,
           sender: 'received',
-          text: row.content,
+          text: String(row.content ?? row.message ?? ''),
           time: formatChatTime(row.created_at),
           createdAt: row.created_at
         });
