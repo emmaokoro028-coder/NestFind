@@ -1052,6 +1052,24 @@ body {
 }
 
 /* ========== MESSAGES ========== */
+
+/* ========== NOTIFICATIONS ========== */
+.notification-list { padding: 10px 16px 24px; overflow:auto; flex:1; }
+.notification-item { display:flex; gap:12px; align-items:flex-start; padding:14px 4px; border-bottom:1px solid var(--border-light); cursor:pointer; }
+.notification-item.unread { background:var(--primary-light); margin:0 -8px; padding-left:12px; padding-right:12px; border-radius:12px; border-bottom-color:transparent; }
+.notification-icon { width:42px; height:42px; border-radius:12px; background:var(--primary-light); color:var(--primary); display:flex; align-items:center; justify-content:center; flex:0 0 42px; }
+.notification-item.unread .notification-icon { background:#fff; }
+.notification-body { min-width:0; flex:1; }
+.notification-top { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
+.notification-title { font-size:14px; font-weight:700; color:var(--text); }
+.notification-time { font-size:10px; color:var(--text-muted); white-space:nowrap; }
+.notification-text { font-size:12px; color:var(--text-secondary); margin-top:3px; line-height:1.45; }
+.notification-unread-dot { width:7px; height:7px; border-radius:50%; background:var(--primary); flex:0 0 7px; margin-top:7px; }
+.notification-actions { padding:10px 16px 4px; display:flex; justify-content:flex-end; }
+.notification-mark-all { border:0; background:none; color:var(--primary); font-size:12px; font-weight:700; cursor:pointer; }
+.bell-wrap { position:relative; display:inline-flex; }
+.bell-badge { position:absolute; top:-4px; right:-4px; min-width:17px; height:17px; padding:0 4px; border-radius:9px; background:#dc2626; color:#fff; font-size:9px; font-weight:800; display:flex; align-items:center; justify-content:center; border:2px solid var(--bg); }
+
 .messages-search {
   padding: 12px 16px;
   background: var(--card);
@@ -1257,6 +1275,62 @@ body {
 }
 .chat-send:active { background: var(--primary-dark); }
 .chat-send svg { width: 20px; height: 20px; }
+
+/* ========== HELP & SUPPORT CHAT ========== */
+.support-chat-subtitle {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.support-status {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 16px;
+  background: var(--primary-light);
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.support-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #16A34A;
+  flex-shrink: 0;
+}
+.support-chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  -webkit-overflow-scrolling: touch;
+}
+.support-empty {
+  margin-top: auto;
+  margin-bottom: auto;
+  text-align: center;
+  padding: 28px 20px;
+  color: var(--text-muted);
+}
+.support-empty-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--primary-light);
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 12px;
+}
+.support-empty h3 { margin-bottom: 6px; color: var(--text); font-size: 16px; }
+.support-empty p { font-size: 13px; line-height: 1.5; }
 
 /* ========== ADD PROPERTY ========== */
 .add-form {
@@ -1553,26 +1627,6 @@ body {
   z-index: 50;
   box-shadow: 0 -2px 16px rgba(0,0,0,0.04);
 }
-.nav-message-badge {
-  position: absolute;
-  top: 4px;
-  right: calc(50% - 25px);
-  min-width: 17px;
-  height: 17px;
-  padding: 0 4px;
-  border-radius: 999px;
-  background: #DC2626;
-  color: #fff;
-  font-size: 9px;
-  font-weight: 800;
-  line-height: 17px;
-  text-align: center;
-  border: 2px solid var(--card);
-  display: none;
-  z-index: 3;
-}
-.nav-message-badge.show { display: block; }
-
 .nav-item {
   display: flex;
   flex-direction: column;
@@ -1865,6 +1919,43 @@ body {
 .viewing-card-status.requested,.viewing-card-status.pending{background:#eef8f3;color:var(--primary)}
 .viewing-actions{animation:viewingActionsIn .18s ease-out}
 @keyframes viewingActionsIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+
+
+/* ==================== TRUST & SAFETY ==================== */
+.owner-card{display:flex;align-items:center;gap:12px;padding:14px;background:var(--card);border:1px solid var(--border);border-radius:14px;margin:14px 0;cursor:pointer}
+.owner-card:hover{box-shadow:var(--shadow)}
+.owner-card-avatar{width:46px;height:46px;border-radius:50%;object-fit:cover;background:var(--primary-light)}
+.owner-card-info{flex:1;min-width:0}
+.owner-card-name{font-size:14px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:5px}
+.owner-card-sub{font-size:12px;color:var(--text-muted);margin-top:2px}
+.owner-verified{display:inline-flex;align-items:center;gap:4px;color:var(--primary);font-size:11px;font-weight:700}
+.owner-verified svg{width:14px;height:14px}
+.trust-pills{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}
+.trust-pill{display:inline-flex;align-items:center;gap:5px;padding:5px 8px;border-radius:999px;background:var(--primary-light);color:var(--primary);font-size:10px;font-weight:700}
+.trust-pill.neutral{background:#f1f3f5;color:var(--text-secondary)}
+.trust-pill svg{width:12px;height:12px}
+.trust-list{padding:18px}
+.trust-profile-card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:20px;text-align:center;box-shadow:var(--shadow)}
+.trust-profile-avatar{width:86px;height:86px;border-radius:50%;object-fit:cover;background:var(--primary-light);margin:0 auto 12px}
+.trust-profile-name{font-size:20px;font-weight:800}
+.trust-profile-email{font-size:12px;color:var(--text-muted);margin-top:3px}
+.trust-profile-bio{font-size:13px;color:var(--text-secondary);margin:12px 0;line-height:1.6}
+.trust-profile-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:18px 0}
+.trust-stat{background:var(--bg);border-radius:12px;padding:11px 6px}
+.trust-stat strong{display:block;font-size:16px;color:var(--text)}
+.trust-stat span{font-size:10px;color:var(--text-muted)}
+.trust-section-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;margin-top:12px}
+.trust-section-card h3{font-size:14px;margin-bottom:10px}
+.trust-check{display:flex;gap:9px;align-items:flex-start;font-size:12px;color:var(--text-secondary);margin:9px 0}
+.trust-check svg{width:16px;height:16px;color:var(--primary);flex:0 0 auto;margin-top:1px}
+.report-choice{display:flex;align-items:center;gap:10px;padding:13px;border:1px solid var(--border);border-radius:12px;margin:8px 0;cursor:pointer}
+.report-choice input{accent-color:var(--primary)}
+.report-choice-text{font-size:13px;font-weight:600}
+.report-details{min-height:90px;resize:none}
+.report-warning{font-size:11px;color:var(--text-muted);line-height:1.5;margin-top:10px}
+.status-banner{display:flex;gap:9px;align-items:flex-start;padding:12px;border-radius:12px;background:var(--primary-light);color:var(--primary);font-size:12px;line-height:1.5;margin-top:12px}
+.status-banner svg{width:17px;height:17px;flex:0 0 auto}
+
 </style>
 </head>
 <body>
@@ -1961,8 +2052,8 @@ body {
             </div>
           </div>
         </div>
-        <button class="icon-btn" onclick="toast('No new notifications')">
-          <i data-lucide="bell"></i>
+        <button class="icon-btn" type="button" onclick="openNotifications()" aria-label="Notifications">
+          <span class="bell-wrap"><i data-lucide="bell"></i><span class="bell-badge" id="notification-badge" style="display:none">0</span></span>
         </button>
       </div>
       <div class="search-bar" onclick="showScreen('search'); document.getElementById('search-input').focus()">
@@ -2026,7 +2117,7 @@ body {
         <i data-lucide="plus"></i>
       </button>
       <button class="nav-item" data-nav="messages" onclick="navTo('messages')">
-        <i data-lucide="message-circle"></i><span>Messages</span><span class="nav-message-badge" aria-label="Unread messages"></span>
+        <i data-lucide="message-circle"></i><span>Messages</span>
       </button>
       <button class="nav-item" data-nav="profile" onclick="navTo('profile')">
         <i data-lucide="user"></i><span>Profile</span>
@@ -2086,6 +2177,16 @@ body {
     </div>
   </div>
 
+  <!-- ========== OWNER PROFILE ========== -->
+  <div class="screen" id="screen-owner-profile">
+    <div class="header">
+      <button class="header-back" onclick="goBack()"><i data-lucide="arrow-left"></i></button>
+      <div class="header-title">Owner Profile</div>
+      <button class="icon-btn" type="button" onclick="openUserReport(currentOwnerProfileId)"><i data-lucide="flag"></i></button>
+    </div>
+    <div class="scroll-content no-nav trust-list" id="owner-profile-content"></div>
+  </div>
+
   <!-- ========== MAP ========== -->
   <div class="screen" id="screen-map">
     <div class="header">
@@ -2131,9 +2232,40 @@ body {
       <button class="nav-item" data-nav="home" onclick="navTo('home')"><i data-lucide="home"></i><span>Home</span></button>
       <button class="nav-item" data-nav="search" onclick="navTo('search')"><i data-lucide="search"></i><span>Search</span></button>
       <button class="nav-add" onclick="navTo('add')"><i data-lucide="plus"></i></button>
-      <button class="nav-item active" data-nav="messages" onclick="navTo('messages')"><i data-lucide="message-circle"></i><span>Messages</span><span class="nav-message-badge" aria-label="Unread messages"></span></button>
+      <button class="nav-item active" data-nav="messages" onclick="navTo('messages')"><i data-lucide="message-circle"></i><span>Messages</span></button>
       <button class="nav-item" data-nav="profile" onclick="navTo('profile')"><i data-lucide="user"></i><span>Profile</span></button>
     </nav>
+  </div>
+
+  <!-- ========== NOTIFICATIONS ========== -->
+  <div class="screen" id="screen-notifications">
+    <div class="header">
+      <button class="header-back" onclick="goBack()"><i data-lucide="arrow-left"></i></button>
+      <div class="header-title">Notifications</div>
+      <button class="icon-btn" type="button" onclick="markAllNotificationsRead()" aria-label="Mark all as read"><i data-lucide="check-check"></i></button>
+    </div>
+    <div class="notification-actions">
+      <button class="notification-mark-all" type="button" onclick="markAllNotificationsRead()">Mark all as read</button>
+    </div>
+    <div class="notification-list" id="notification-list"></div>
+  </div>
+
+  <!-- ========== HELP & SUPPORT CHAT ========== -->
+  <div class="screen" id="screen-support-chat">
+    <div class="header">
+      <button class="header-back" onclick="showScreen('profile')"><i data-lucide="arrow-left"></i></button>
+      <div class="chat-header-info">
+        <div class="chat-header-name">NestFind Help &amp; Support</div>
+        <div class="support-chat-subtitle">We're here to help</div>
+      </div>
+      <div class="profile-menu-icon" style="width:38px;height:38px;flex-shrink:0"><i data-lucide="headphones"></i></div>
+    </div>
+    <div class="support-status"><span class="support-status-dot"></span><span>Support chat is available</span></div>
+    <div class="support-chat-messages" id="support-chat-messages"></div>
+    <div class="chat-input-area">
+      <input type="text" class="chat-input" id="support-chat-input" placeholder="Message Help &amp; Support..." onkeydown="if(event.key==='Enter')sendSupportMessage()">
+      <button class="chat-send" id="support-chat-send" type="button" onclick="sendSupportMessage()"><i data-lucide="send"></i></button>
+    </div>
   </div>
 
   <!-- ========== CHAT ========== -->
@@ -2351,6 +2483,14 @@ body {
           </div>
           <div class="profile-menu-arrow"><i data-lucide="chevron-right"></i></div>
         </div>
+        <div class="profile-menu-item" onclick="openNotifications()">
+          <div class="profile-menu-icon"><i data-lucide="bell"></i></div>
+          <div class="profile-menu-text">
+            <div class="profile-menu-title">Notifications</div>
+            <div class="profile-menu-desc" id="count-notifications">0 unread notifications</div>
+          </div>
+          <div class="profile-menu-arrow"><i data-lucide="chevron-right"></i></div>
+        </div>
         <div class="profile-menu-item" onclick="navTo('messages')">
           <div class="profile-menu-icon"><i data-lucide="message-circle"></i></div>
           <div class="profile-menu-text">
@@ -2375,7 +2515,7 @@ body {
           </div>
           <div class="profile-menu-arrow"><i data-lucide="chevron-right"></i></div>
         </div>
-        <div class="profile-menu-item" onclick="toast('Help & Support: support@nestfind.ng')">
+        <div class="profile-menu-item" onclick="openSupportChat()">
           <div class="profile-menu-icon"><i data-lucide="help-circle"></i></div>
           <div class="profile-menu-text">
             <div class="profile-menu-title">Help & Support</div>
@@ -2397,7 +2537,7 @@ body {
       <button class="nav-item" data-nav="home" onclick="navTo('home')"><i data-lucide="home"></i><span>Home</span></button>
       <button class="nav-item" data-nav="search" onclick="navTo('search')"><i data-lucide="search"></i><span>Search</span></button>
       <button class="nav-add" onclick="navTo('add')"><i data-lucide="plus"></i></button>
-      <button class="nav-item" data-nav="messages" onclick="navTo('messages')"><i data-lucide="message-circle"></i><span>Messages</span><span class="nav-message-badge" aria-label="Unread messages"></span></button>
+      <button class="nav-item" data-nav="messages" onclick="navTo('messages')"><i data-lucide="message-circle"></i><span>Messages</span></button>
       <button class="nav-item active" data-nav="profile" onclick="navTo('profile')"><i data-lucide="user"></i><span>Profile</span></button>
     </nav>
   </div>
@@ -2413,6 +2553,29 @@ body {
   </div>
 
   <!-- ========== SCHEDULE MODAL ========== -->
+  <!-- ========== REPORT MODAL ========== -->
+  <div class="modal-overlay" id="report-modal">
+    <div class="modal-sheet" style="position:relative">
+      <div class="modal-handle"></div>
+      <button class="modal-close" onclick="closeModal('report-modal')"><i data-lucide="x"></i></button>
+      <div class="modal-title" id="report-modal-title">Report</div>
+      <div id="report-target-label" style="font-size:12px;color:var(--text-muted);margin:-4px 0 12px"></div>
+      <div id="report-reasons">
+        <label class="report-choice"><input type="radio" name="reportReason" value="Scam or fraud"><span class="report-choice-text">Scam or fraud</span></label>
+        <label class="report-choice"><input type="radio" name="reportReason" value="Fake or misleading information"><span class="report-choice-text">Fake or misleading information</span></label>
+        <label class="report-choice"><input type="radio" name="reportReason" value="Duplicate or copied listing"><span class="report-choice-text">Duplicate or copied listing</span></label>
+        <label class="report-choice"><input type="radio" name="reportReason" value="Harassment or inappropriate behavior"><span class="report-choice-text">Harassment or inappropriate behavior</span></label>
+        <label class="report-choice"><input type="radio" name="reportReason" value="Other"><span class="report-choice-text">Other</span></label>
+      </div>
+      <div class="form-group" style="margin-top:12px">
+        <label>Additional details (optional)</label>
+        <textarea id="report-details" class="report-details" placeholder="Tell us what happened or what looks suspicious..."></textarea>
+      </div>
+      <div class="report-warning">Reports are reviewed by NestFind. Do not include passwords, card details, OTP codes, or other sensitive information.</div>
+      <button class="btn-primary" style="margin-top:14px" type="button" onclick="submitTrustReport()">Submit Report</button>
+    </div>
+  </div>
+
   <div class="modal-overlay" id="schedule-modal">
     <div class="modal-sheet" style="position:relative">
       <div class="modal-handle"></div>
@@ -2762,8 +2925,13 @@ let favorites = JSON.parse(localStorage.getItem('nf_favorites') || '[]');
 let conversations = JSON.parse(localStorage.getItem('nf_conversations') || 'null') || DEFAULT_CONVERSATIONS;
 let chatMessages = JSON.parse(localStorage.getItem('nf_chat_messages') || '{}');
 let viewings = JSON.parse(localStorage.getItem('nf_viewings') || '[]');
+let notifications = JSON.parse(localStorage.getItem('nf_notifications') || '[]');
+let realtimeNotificationChannel = null;
 let userListings = JSON.parse(localStorage.getItem('nf_listings') || '[]');
 let currentPropertyId = null;
+let currentOwnerProfileId = null;
+let trustReportTarget = { type: null, propertyId: null, userId: null };
+let ownerProfileCache = {};
 let currentChatId = null;
 let currentChatPropertyId = null;
 let searchType = 'all';
@@ -2797,15 +2965,6 @@ let pendingMessageNavigation = false;
 
 
 // ==================== UTILS ====================
-function escapeHtml(value) {
-  return String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/\"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
-
 function formatPrice(price, period) {
   const formatted = '₦' + price.toLocaleString('en-NG');
   if (period === 'sale') return formatted;
@@ -3040,6 +3199,8 @@ function saveState() {
   localStorage.setItem('nf_conversations', JSON.stringify(conversations));
   localStorage.setItem('nf_chat_messages', JSON.stringify(chatMessages));
   localStorage.setItem('nf_viewings', JSON.stringify(viewings));
+  localStorage.setItem('nf_notifications', JSON.stringify(notifications));
+  saveSupportMessages();
   localStorage.setItem('nf_listings', JSON.stringify(userListings));
   if (currentUser) localStorage.setItem('nf_user', JSON.stringify(currentUser));
 }
@@ -3062,6 +3223,8 @@ function showScreen(id) {
   if (id === 'home') renderHome();
   if (id === 'search') runSearch();
   if (id === 'messages') renderConversations();
+  if (id === 'notifications') renderNotifications();
+  if (id === 'support-chat') renderSupportMessages();
   if (id === 'profile') updateProfileCounts();
   if (id === 'map') renderMap();
   if (id === 'add') {
@@ -3168,7 +3331,7 @@ function propListHTML(p) {
           ${p.baths ? `<span><i data-lucide="bath"></i> ${p.baths}</span>` : ''}
           ${p.parking ? `<span><i data-lucide="car"></i> ${p.parking}</span>` : ''}
         </div>
-        ${p.verified ? `<div class="verified-badge"><i data-lucide="badge-check"></i> Verified Owner</div>` : ''}
+        ${p.verified ? `<div class="verified-badge"><i data-lucide="badge-check"></i> Verified Listing</div>` : ''}
       </div>
     </div>`;
 }
@@ -3325,7 +3488,7 @@ function openProperty(id) {
     <div class="detail-price">${formatPrice(p.price, p.period)}</div>
     <div class="detail-title">${p.title}</div>
     <div class="detail-loc"><i data-lucide="map-pin"></i> ${p.location}</div>
-    ${p.verified ? '<div class="detail-verified"><i data-lucide="badge-check"></i> Verified Owner</div>' : ''}
+    ${p.verified ? '<div class="detail-verified"><i data-lucide="badge-check"></i> Verified Listing</div>' : ''}
     <div class="detail-stats">
       ${p.beds ? `<div class="stat-item"><i data-lucide="bed"></i> ${p.beds} beds</div>` : ''}
       ${p.baths ? `<div class="stat-item"><i data-lucide="bath"></i> ${p.baths} baths</div>` : ''}
@@ -3343,10 +3506,18 @@ function openProperty(id) {
         ${(p.amenities || []).map(a => `<div class="amenity-item"><i data-lucide="check-circle-2"></i> ${a}</div>`).join('')}
       </div>
     </div>
-    <div class="safety-notice">
-      Safety first: NestFind does not collect, hold, or transfer property payments. Always inspect the property and make payment arrangements directly with the owner or agent after verifying the property.
+    <div class="owner-card" onclick='openOwnerProfile(${JSON.stringify(String(p.ownerId || ''))})'>
+      <img class="owner-card-avatar" src="${p.ownerAvatar || 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&q=80'}" alt="Property owner">
+      <div class="owner-card-info">
+        <div class="owner-card-name">${escapeHtml(p.owner || 'Property Owner')} ${p.ownerVerified ? '<span class="owner-verified"><i data-lucide="badge-check"></i> Verified</span>' : ''}</div>
+        <div class="owner-card-sub">View owner profile · ${p.ownerListingCount || 1} listing${p.ownerListingCount === 1 ? '' : 's'}</div>
+      </div>
+      <i data-lucide="chevron-right" style="width:18px;color:var(--text-muted)"></i>
     </div>
-    <button class="report-btn" onclick="toast('Report submitted. Our team will review this listing.')">Report Property</button>
+    <div class="safety-notice">
+      <strong>Safety first:</strong> NestFind does not collect, hold, or transfer property payments. Never send money before inspecting a property and verifying the owner. Report suspicious listings or users to NestFind.
+    </div>
+    <button class="report-btn" type="button" onclick='openPropertyReport(${JSON.stringify(String(p.id))})'><i data-lucide="flag" style="width:14px;height:14px;vertical-align:-2px"></i> Report Property</button>
   `;
   showScreen('detail');
   lucide.createIcons();
@@ -3443,7 +3614,6 @@ async function handleDetailChatClick() {
 
     // Load existing messages, but don't let a read/query error prevent chat UI.
     await loadRemoteMessagesForConversation(conv);
-    await markConversationRead(conv);
     renderOpenChatHeader(conv);
     renderChatMessages();
   } catch (error) {
@@ -3592,19 +3762,201 @@ async function resolveConversationName(conv) {
   return conv?.name || 'NestFind Member';
 }
 
+function notificationIcon(type) {
+  if (type === 'message') return 'message-circle';
+  if (type === 'viewing_request') return 'calendar-plus';
+  if (type === 'viewing_accepted') return 'calendar-check';
+  if (type === 'viewing_declined') return 'calendar-x';
+  return 'bell';
+}
+
+function notificationTime(value) {
+  if (!value) return '';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  const diff = Date.now() - d.getTime();
+  if (diff < 60 * 1000) return 'Just now';
+  if (diff < 60 * 60 * 1000) return `${Math.floor(diff / 60000)}m ago`;
+  if (diff < 24 * 60 * 60 * 1000) return `${Math.floor(diff / 3600000)}h ago`;
+  if (diff < 7 * 24 * 60 * 60 * 1000) return `${Math.floor(diff / 86400000)}d ago`;
+  return d.toLocaleDateString('en-NG', { day:'numeric', month:'short' });
+}
+
+function notificationUnreadCount() {
+  return notifications.filter(n => !n.read).length;
+}
+
+function updateNotificationBadge() {
+  const count = notificationUnreadCount();
+  const badge = document.getElementById('notification-badge');
+  if (badge) {
+    badge.textContent = count > 99 ? '99+' : String(count);
+    badge.style.display = count ? 'flex' : 'none';
+  }
+  const profile = document.getElementById('count-notifications');
+  if (profile) profile.textContent = `${count} unread notification${count === 1 ? '' : 's'}`;
+}
+
+function renderNotifications() {
+  const container = document.getElementById('notification-list');
+  if (!container) return;
+  if (!notifications.length) {
+    container.innerHTML = '<div class="empty-state" style="padding:70px 20px"><i data-lucide="bell-off"></i><p>No notifications yet.<br>Messages and viewing updates will appear here.</p></div>';
+    lucide.createIcons();
+    updateNotificationBadge();
+    return;
+  }
+
+  container.innerHTML = notifications.map(n => `
+    <div class="notification-item ${n.read ? '' : 'unread'}" data-notification-id="${escapeHtml(n.id)}">
+      <div class="notification-icon"><i data-lucide="${escapeHtml(notificationIcon(n.type))}"></i></div>
+      <div class="notification-body">
+        <div class="notification-top">
+          <div class="notification-title">${escapeHtml(n.title || 'NestFind Notification')}</div>
+          <div class="notification-time">${escapeHtml(notificationTime(n.created_at || n.createdAt))}</div>
+        </div>
+        <div class="notification-text">${escapeHtml(n.body || '')}</div>
+      </div>
+      ${n.read ? '' : '<div class="notification-unread-dot"></div>'}
+    </div>`).join('');
+
+  container.querySelectorAll('[data-notification-id]').forEach(item => {
+    item.addEventListener('click', () => handleNotificationClick(item.getAttribute('data-notification-id')));
+  });
+  lucide.createIcons();
+  updateNotificationBadge();
+}
+
+async function loadNotifications() {
+  if (!currentUser || !supabaseClient) {
+    notifications = [];
+    updateNotificationBadge();
+    renderNotifications();
+    return;
+  }
+  try {
+    const { data, error } = await supabaseClient
+      .from('notifications')
+      .select('id,user_id,type,title,body,actor_id,property_id,viewing_request_id,message_id,is_read,created_at')
+      .eq('user_id', currentUser.id)
+      .order('created_at', { ascending: false })
+      .limit(100);
+    if (error) throw error;
+    notifications = (data || []).map(row => ({
+      ...row,
+      read: !!row.is_read
+    }));
+    saveState();
+    renderNotifications();
+  } catch (error) {
+    console.error('NestFind notifications load error:', error);
+    toast(error?.message || 'Could not load notifications.');
+  }
+}
+
+async function markNotificationRead(id) {
+  const key = String(id);
+  const item = notifications.find(n => String(n.id) === key);
+  if (!item || item.read) return;
+  item.read = true;
+  item.is_read = true;
+  saveState();
+  renderNotifications();
+  if (!supabaseClient || !currentUser) return;
+  try {
+    await supabaseClient.from('notifications').update({ is_read: true }).eq('id', id).eq('user_id', currentUser.id);
+  } catch (error) {
+    console.warn('Could not mark notification read:', error);
+  }
+}
+
+async function markAllNotificationsRead() {
+  const unread = notifications.filter(n => !n.read);
+  if (!unread.length) { toast('All notifications are already read.'); return; }
+  notifications.forEach(n => { n.read = true; n.is_read = true; });
+  saveState();
+  renderNotifications();
+  if (supabaseClient && currentUser) {
+    try {
+      const { error } = await supabaseClient.from('notifications').update({ is_read: true }).eq('user_id', currentUser.id).eq('is_read', false);
+      if (error) throw error;
+    } catch (error) {
+      console.warn('Could not mark all notifications read:', error);
+    }
+  }
+  toast('All notifications marked as read.');
+}
+
+async function handleNotificationClick(id) {
+  const n = notifications.find(item => String(item.id) === String(id));
+  if (!n) return;
+  await markNotificationRead(id);
+
+  if (n.type === 'message' && n.property_id && n.actor_id) {
+    const convId = conversationKey(n.property_id, n.actor_id);
+    if (!conversations.some(c => String(c.id) === String(convId))) await loadRemoteConversations();
+    const conv = conversations.find(c => String(c.id) === String(convId));
+    if (conv) {
+      await openChat(conv.id);
+      return;
+    }
+  }
+
+  if (n.type === 'viewing_request' || n.type === 'viewing_accepted' || n.type === 'viewing_declined') {
+    await showViewings();
+    return;
+  }
+
+  showScreen('notifications');
+}
+
+function openNotifications() {
+  if (!currentUser) { toast('Please sign in first.'); showScreen('auth'); return; }
+  showScreen('notifications');
+  loadNotifications();
+}
+
+function stopRealtimeNotifications() {
+  if (realtimeNotificationChannel && supabaseClient) supabaseClient.removeChannel(realtimeNotificationChannel);
+  realtimeNotificationChannel = null;
+}
+
+function startRealtimeNotifications() {
+  stopRealtimeNotifications();
+  if (!supabaseClient || !currentUser) return;
+  const userId = String(currentUser.id);
+  realtimeNotificationChannel = supabaseClient
+    .channel(`nestfind-notifications-${userId}`)
+    .on('postgres_changes', {
+      event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}`
+    }, payload => {
+      const row = payload.new;
+      if (!row?.id) return;
+      if (notifications.some(n => String(n.id) === String(row.id))) return;
+      notifications.unshift({ ...row, read: !!row.is_read });
+      notifications = notifications.slice(0, 100);
+      saveState();
+      updateNotificationBadge();
+      renderNotifications();
+      toast(row.title || 'New NestFind notification');
+    })
+    .subscribe(status => console.log('NestFind notifications realtime:', status));
+}
+
 async function loadRemoteConversations() {
   if (!currentUser || !supabaseClient) return;
 
   try {
     const { data, error } = await supabaseClient
       .from('messages')
-      .select('id,sender_id,receiver_id,property_id,content,created_at,read_at')
+      .select('id,sender_id,receiver_id,property_id,content,message,created_at,read_at')
       .order('created_at', { ascending: true });
     if (error) throw error;
 
     const groups = new Map();
     for (const row of (data || [])) {
-      if (!row.property_id || !row.content) continue;
+      const rowText = String(row.content ?? row.message ?? '').trim();
+      if (!row.property_id || !rowText) continue;
       const sender = String(row.sender_id || '');
       const receiver = String(row.receiver_id || '');
       const me = String(currentUser.id);
@@ -3622,19 +3974,15 @@ async function loadRemoteConversations() {
           lastMessage: '',
           time: '',
           unread: false,
-          unreadCount: 0,
           real: true,
           messages: []
         });
       }
       const group = groups.get(key);
       group.messages.push(row);
-      group.lastMessage = row.content;
+      group.lastMessage = rowText;
       group.time = formatChatTime(row.created_at);
-      if (receiver === me && !row.read_at && key !== String(currentChatId || '')) {
-        group.unread = true;
-        group.unreadCount = Number(group.unreadCount || 0) + 1;
-      }
+      if (receiver === me && !row.read_at && key !== String(currentChatId || '')) group.unread = true;
     }
 
     const remote = Array.from(groups.values());
@@ -3653,7 +4001,7 @@ async function loadRemoteConversations() {
       chatMessages[conv.id] = conv.messages.map(m => ({
         id: m.id,
         sender: String(m.sender_id) === String(currentUser.id) ? 'sent' : 'received',
-        text: m.content,
+        text: String(m.content ?? m.message ?? ''),
         time: formatChatTime(m.created_at),
         createdAt: m.created_at
       }));
@@ -3667,6 +4015,163 @@ async function loadRemoteConversations() {
   }
 }
 
+const SUPPORT_WELCOME = {
+  id: 'support-welcome',
+  sender: 'support',
+  text: 'Hi! Welcome to NestFind Help & Support. How can we help you today?',
+  time: 'Now',
+  createdAt: null
+};
+
+let supportMessages = JSON.parse(localStorage.getItem('nf_support_messages') || 'null') || [SUPPORT_WELCOME];
+let supportRealtimeChannel = null;
+
+function saveSupportMessages() {
+  localStorage.setItem('nf_support_messages', JSON.stringify(supportMessages));
+}
+
+function renderSupportMessages() {
+  const container = document.getElementById('support-chat-messages');
+  if (!container) return;
+  if (!supportMessages.length) {
+    container.innerHTML = `<div class="support-empty"><div class="support-empty-icon"><i data-lucide="headphones"></i></div><h3>NestFind Support</h3><p>Send us a message and our support team will help you.</p></div>`;
+  } else {
+    container.innerHTML = supportMessages.map(m => `
+      <div class="msg-bubble ${m.sender === 'user' ? 'sent' : 'received'}">
+        <div>${escapeHtml(m.text)}</div>
+        <div class="msg-time">${escapeHtml(m.time || '')}</div>
+      </div>`).join('');
+  }
+  container.scrollTop = container.scrollHeight;
+  lucide.createIcons();
+}
+
+async function loadSupportMessages() {
+  if (!currentUser || !supabaseClient) {
+    renderSupportMessages();
+    return;
+  }
+  try {
+    const { data, error } = await supabaseClient
+      .from('support_messages')
+      .select('id,user_id,sender_type,content,created_at')
+      .eq('user_id', currentUser.id)
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    const rows = data || [];
+    if (rows.length) {
+      supportMessages = rows.map(row => ({
+        id: row.id,
+        sender: row.sender_type === 'user' ? 'user' : 'support',
+        text: String(row.content || ''),
+        time: formatChatTime(row.created_at),
+        createdAt: row.created_at
+      }));
+      saveSupportMessages();
+    } else {
+      supportMessages = [SUPPORT_WELCOME];
+      saveSupportMessages();
+    }
+    renderSupportMessages();
+  } catch (error) {
+    console.error('NestFind support load error:', error);
+    renderSupportMessages();
+    toast(error?.message || 'Could not load support chat.');
+  }
+}
+
+async function sendSupportMessage() {
+  if (!(await syncAuthenticatedUser())) {
+    toast('Please sign in to contact Help & Support.');
+    showScreen('auth');
+    return;
+  }
+  const input = document.getElementById('support-chat-input');
+  const button = document.getElementById('support-chat-send');
+  const text = String(input?.value || '').trim();
+  if (!text) return;
+  if (input) input.disabled = true;
+  if (button) button.disabled = true;
+
+  try {
+    if (!supabaseClient) throw new Error('Support chat is not connected yet.');
+    const { data, error } = await supabaseClient
+      .from('support_messages')
+      .insert({
+        user_id: currentUser.id,
+        sender_type: 'user',
+        content: text
+      })
+      .select('id,user_id,sender_type,content,created_at')
+      .single();
+    if (error) throw error;
+
+    supportMessages.push({
+      id: data.id,
+      sender: 'user',
+      text: String(data.content || text),
+      time: formatChatTime(data.created_at),
+      createdAt: data.created_at
+    });
+    saveSupportMessages();
+    if (input) input.value = '';
+    renderSupportMessages();
+  } catch (error) {
+    console.error('NestFind support send error:', error);
+    toast(error?.message || 'Your support message could not be sent.');
+  } finally {
+    if (input) input.disabled = false;
+    if (button) button.disabled = false;
+  }
+}
+
+function startRealtimeSupport() {
+  if (!supabaseClient || !currentUser) return;
+  if (supportRealtimeChannel) supabaseClient.removeChannel(supportRealtimeChannel);
+  const userId = String(currentUser.id);
+  supportRealtimeChannel = supabaseClient
+    .channel(`nestfind-support-${userId}`)
+    .on('postgres_changes', {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'support_messages',
+      filter: `user_id=eq.${userId}`
+    }, payload => {
+      const row = payload.new;
+      if (!row || String(row.user_id) !== userId) return;
+      if (supportMessages.some(m => String(m.id) === String(row.id))) return;
+      supportMessages.push({
+        id: row.id,
+        sender: row.sender_type === 'user' ? 'user' : 'support',
+        text: String(row.content || ''),
+        time: formatChatTime(row.created_at),
+        createdAt: row.created_at
+      });
+      saveSupportMessages();
+      renderSupportMessages();
+    })
+    .subscribe();
+}
+
+function stopRealtimeSupport() {
+  if (supportRealtimeChannel && supabaseClient) {
+    supabaseClient.removeChannel(supportRealtimeChannel);
+  }
+  supportRealtimeChannel = null;
+}
+
+async function openSupportChat() {
+  if (!(await syncAuthenticatedUser())) {
+    toast('Please sign in to contact Help & Support.');
+    showScreen('auth');
+    return;
+  }
+  await loadSupportMessages();
+  showScreen('support-chat');
+  startRealtimeSupport();
+  setTimeout(() => document.getElementById('support-chat-input')?.focus(), 100);
+}
+
 async function loadRemoteMessagesForConversation(conv) {
   if (!currentUser || !supabaseClient || !conv?.propertyId || !conv?.otherUserId) return;
   try {
@@ -3674,7 +4179,7 @@ async function loadRemoteMessagesForConversation(conv) {
     const other = String(conv.otherUserId);
     const { data, error } = await supabaseClient
       .from('messages')
-      .select('id,sender_id,receiver_id,property_id,content,created_at,read_at')
+      .select('id,sender_id,receiver_id,property_id,content,message,created_at,read_at')
       .eq('property_id', conv.propertyId)
       .or(`and(sender_id.eq.${me},receiver_id.eq.${other}),and(sender_id.eq.${other},receiver_id.eq.${me})`)
       .order('created_at', { ascending: true });
@@ -3684,14 +4189,14 @@ async function loadRemoteMessagesForConversation(conv) {
     chatMessages[conv.id] = rows.map(row => ({
       id: row.id,
       sender: String(row.sender_id) === me ? 'sent' : 'received',
-      text: row.content,
+      text: String(row.content ?? row.message ?? ''),
       time: formatChatTime(row.created_at),
       createdAt: row.created_at
     }));
 
     if (rows.length) {
       const last = rows[rows.length - 1];
-      conv.lastMessage = last.content;
+      conv.lastMessage = String(last.content ?? last.message ?? '');
       conv.time = formatChatTime(last.created_at);
     }
     conv.name = await resolveConversationName(conv);
@@ -3706,43 +4211,6 @@ async function loadRemoteMessagesForConversation(conv) {
     console.error('NestFind conversation load error:', error);
     toast(error?.message || 'Could not load this conversation.');
   }
-}
-
-function getUnreadMessageCount() {
-  return conversations.reduce((total, conv) => total + Number(conv.unreadCount || (conv.unread ? 1 : 0)), 0);
-}
-
-function updateMessageNotifications() {
-  const count = getUnreadMessageCount();
-  const badges = document.querySelectorAll('.nav-message-badge');
-  badges.forEach(badge => {
-    badge.textContent = count > 99 ? '99+' : String(count);
-    badge.classList.toggle('show', count > 0);
-  });
-  const profileMsg = document.getElementById('count-messages');
-  if (profileMsg) profileMsg.textContent = `${count} unread message${count === 1 ? '' : 's'}`;
-  const baseTitle = 'NestFind';
-  document.title = count > 0 ? `(${count > 99 ? '99+' : count}) ${baseTitle}` : baseTitle;
-}
-
-async function markConversationRead(conv) {
-  if (!currentUser || !supabaseClient || !conv?.propertyId || !conv?.otherUserId) return;
-  const me = String(currentUser.id);
-  try {
-    const { error } = await supabaseClient
-      .from('messages')
-      .update({ read_at: new Date().toISOString() })
-      .eq('property_id', conv.propertyId)
-      .eq('receiver_id', me)
-      .eq('sender_id', conv.otherUserId)
-      .is('read_at', null);
-    if (error) throw error;
-  } catch (error) {
-    console.warn('NestFind mark messages read error:', error);
-  }
-  conv.unread = false;
-  conv.unreadCount = 0;
-  updateMessageNotifications();
 }
 
 function renderConversations() {
@@ -3783,7 +4251,6 @@ function renderConversations() {
     item.addEventListener('click', () => openChat(item.getAttribute('data-conversation-id')));
   });
   lucide.createIcons();
-  updateMessageNotifications();
 }
 
 function filterConversations() { renderConversations(); }
@@ -3810,9 +4277,7 @@ async function openChat(convId) {
   currentChatId = conv.id;
   currentChatPropertyId = conv.propertyId;
   conv.unread = false;
-  conv.unreadCount = 0;
   await loadRemoteMessagesForConversation(conv);
-  await markConversationRead(conv);
   saveState();
   renderOpenChatHeader(conv);
   renderConversations();
@@ -3865,7 +4330,7 @@ async function sendMessage() {
         content: text,
         message: text
       })
-      .select('id,sender_id,receiver_id,property_id,content,created_at,read_at')
+      .select('id,sender_id,receiver_id,property_id,content,message,created_at,read_at')
       .single();
     if (error) throw error;
 
@@ -3873,13 +4338,13 @@ async function sendMessage() {
     const message = {
       id: data.id,
       sender: 'sent',
-      text: data.content,
+      text: String(data.content ?? data.message ?? text),
       time: formatChatTime(data.created_at),
       createdAt: data.created_at
     };
     if (!chatMessages[currentChatId]) chatMessages[currentChatId] = [];
     chatMessages[currentChatId].push(message);
-    conv.lastMessage = data.content;
+    conv.lastMessage = String(data.content ?? data.message ?? text);
     conv.time = formatChatTime(data.created_at);
     conv.unread = false;
     saveState();
@@ -3933,7 +4398,6 @@ function startRealtimeMessages() {
           lastMessage: '',
           time: '',
           unread: true,
-          unreadCount: 0,
           real: true
         };
         conversations.unshift(conv);
@@ -3945,12 +4409,10 @@ function startRealtimeMessages() {
         conv.property = `${p.title} - ${p.area || p.location || ''}`;
         conv.avatar = p.ownerAvatar || '';
       }
-      conv.lastMessage = row.content;
+      conv.lastMessage = rowText;
       conv.time = formatChatTime(row.created_at);
       const isOpen = String(currentChatId) === String(conv.id) && document.getElementById('screen-chat')?.classList.contains('active');
       conv.unread = !isOpen;
-      if (!isOpen) conv.unreadCount = Number(conv.unreadCount || 0) + 1;
-      else { conv.unreadCount = 0; await markConversationRead(conv); }
 
       if (!chatMessages[conv.id]) chatMessages[conv.id] = [];
       const exists = chatMessages[conv.id].some(m => String(m.id) === String(row.id));
@@ -3958,7 +4420,7 @@ function startRealtimeMessages() {
         chatMessages[conv.id].push({
           id: row.id,
           sender: 'received',
-          text: row.content,
+          text: String(row.content ?? row.message ?? ''),
           time: formatChatTime(row.created_at),
           createdAt: row.created_at
         });
@@ -4476,6 +4938,7 @@ function resetListingForm() {
 
 // ==================== PROFILE ====================
 function updateProfileCounts() {
+  updateNotificationBadge();
   loadMessageAccessStatus().then(() => {
     const msgEl = document.getElementById('count-messages');
     if (msgEl) msgEl.textContent = messageAccessUntil > Date.now() ? (messageAccessUntil === Number.POSITIVE_INFINITY ? 'Messaging active · Permanent' : `Messaging active · ${formatAccessRemaining(messageAccessUntil)} left`) : '7-day free trial · ₦2,000 one-time after trial';
@@ -4483,14 +4946,16 @@ function updateProfileCounts() {
   updateMembershipBadge();
   const own = currentUser ? allProperties.filter(p => String(p.ownerId || '') === String(currentUser.id)).length : userListings.length;
   const saved = favorites.length;
+  const unread = conversations.filter(c => c.unread).length;
   const upcoming = viewings.filter(v => !v.status || v.status === 'Requested').length;
   const listingsEl = document.getElementById('count-listings');
   const savedEl = document.getElementById('count-saved');
+  const msgEl = document.getElementById('count-messages');
   const viewEl = document.getElementById('count-viewings');
   if (listingsEl) listingsEl.textContent = `${own} active listing${own === 1 ? '' : 's'}`;
   if (savedEl) savedEl.textContent = `${saved} saved propert${saved === 1 ? 'y' : 'ies'}`;
+  if (msgEl) msgEl.textContent = `${unread} unread message${unread === 1 ? '' : 's'}`;
   if (viewEl) viewEl.textContent = `${upcoming} upcoming viewing${upcoming === 1 ? '' : 's'}`;
-  updateMessageNotifications();
 }
 
 function updateProfileUI() {
@@ -4831,6 +5296,16 @@ const SUPABASE_URL = 'https://rjpzolccephzpbbqrbwq.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_okN3fziucg3ARPecOOSLnw_TvMYsVmM';
 const supabaseClient = window.supabase?.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY) || null;
 
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+
 function switchAuthTab(mode) {
   authMode = mode;
   pendingSignup = null;
@@ -5086,8 +5561,11 @@ function dbPropertyToApp(row) {
     description: row.description || '',
     amenities: Array.isArray(row.amenities) ? row.amenities : [],
     videoUrl: row.video_url || '',
-    owner: 'Property Owner',
-    ownerAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&q=80',
+    owner: ownerProfileCache[String(row.owner_id)]?.full_name || 'Property Owner',
+    ownerAvatar: ownerProfileCache[String(row.owner_id)]?.avatar_url || 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&q=80',
+    ownerVerified: !!ownerProfileCache[String(row.owner_id)]?.verified_owner,
+    ownerBio: ownerProfileCache[String(row.owner_id)]?.bio || '',
+    ownerListingCount: ownerProfileCache[String(row.owner_id)]?.listing_count || 1,
     ownerId: row.owner_id,
     created: row.created_at || '',
     featured: !!row.is_featured,
@@ -5128,6 +5606,137 @@ async function loadCurrentUserData() {
   updateProfileUI();
 }
 
+async function loadPublicOwnerProfiles(ownerIds) {
+  if (!supabaseClient || !ownerIds?.length) return;
+  try {
+    const unique = [...new Set(ownerIds.map(String).filter(Boolean))];
+    const { data, error } = await supabaseClient
+      .from('owner_public_profiles')
+      .select('id,full_name,avatar_url,bio,verified_owner,joined_at,listing_count')
+      .in('id', unique);
+    if (error) throw error;
+    (data || []).forEach(row => { ownerProfileCache[String(row.id)] = row; });
+  } catch (error) {
+    console.warn('Could not load public owner profiles:', error);
+  }
+}
+
+async function openOwnerProfile(ownerId) {
+  const id = String(ownerId || '');
+  if (!id) { toast('Owner profile is not available for this listing.'); return; }
+  currentOwnerProfileId = id;
+  const container = document.getElementById('owner-profile-content');
+  if (!container) return;
+  container.innerHTML = '<div class="empty-state" style="padding:70px 20px"><i data-lucide="loader-circle"></i><p>Loading owner profile…</p></div>';
+  showScreen('owner-profile');
+  try {
+    if (!ownerProfileCache[id] && supabaseClient) await loadPublicOwnerProfiles([id]);
+    const profile = ownerProfileCache[id] || { id, full_name:'Property Owner', avatar_url:'', bio:'', verified_owner:false, listing_count:0 };
+    const listings = allProperties.filter(p => String(p.ownerId || '') === id);
+    const name = profile.full_name || 'Property Owner';
+    const avatar = profile.avatar_url || 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=160&q=80';
+    const joined = profile.joined_at ? new Date(profile.joined_at).toLocaleDateString('en-NG',{month:'long',year:'numeric'}) : '';
+    container.innerHTML = `
+      <div class="trust-profile-card">
+        <img class="trust-profile-avatar" src="${avatar}" alt="${escapeHtml(name)}">
+        <div class="trust-profile-name">${escapeHtml(name)} ${profile.verified_owner ? '<span class="owner-verified"><i data-lucide="badge-check"></i> Verified Owner</span>' : ''}</div>
+        <div class="trust-profile-email">${joined ? `NestFind member since ${escapeHtml(joined)}` : 'NestFind member'}</div>
+        ${profile.bio ? `<div class="trust-profile-bio">${escapeHtml(profile.bio)}</div>` : ''}
+        <div class="trust-profile-stats">
+          <div class="trust-stat"><strong>${listings.length}</strong><span>Active listings</span></div>
+          <div class="trust-stat"><strong>${profile.verified_owner ? 'Yes' : 'No'}</strong><span>Identity status</span></div>
+          <div class="trust-stat"><strong>—</strong><span>Response rating</span></div>
+        </div>
+        <div class="trust-pills">
+          ${profile.verified_owner ? '<span class="trust-pill"><i data-lucide="badge-check"></i> Verified owner</span>' : '<span class="trust-pill neutral"><i data-lucide="shield-question"></i> Verification pending</span>'}
+          <span class="trust-pill"><i data-lucide="message-circle"></i> In-app chat</span>
+          <span class="trust-pill"><i data-lucide="calendar-check"></i> Viewing requests</span>
+        </div>
+      </div>
+      <div class="trust-section-card">
+        <h3>Safety checklist</h3>
+        <div class="trust-check"><i data-lucide="check-circle-2"></i><span>Inspect the property before sending any property payment.</span></div>
+        <div class="trust-check"><i data-lucide="check-circle-2"></i><span>Keep conversations and viewing arrangements inside NestFind when possible.</span></div>
+        <div class="trust-check"><i data-lucide="check-circle-2"></i><span>Report requests for OTPs, card details, or unusual upfront transfers.</span></div>
+      </div>
+      <button class="btn-outline" style="width:100%;margin-top:12px" type="button" onclick='openUserReport(${JSON.stringify(id)})'><i data-lucide="flag"></i> Report this user</button>
+    `;
+    lucide.createIcons();
+  } catch (error) {
+    console.error('Owner profile error:', error);
+    toast(error?.message || 'Could not load owner profile.');
+  }
+}
+
+function openPropertyReport(propertyId) {
+  const p = getProperty(propertyId);
+  if (!p) { toast('Property not found.'); return; }
+  trustReportTarget = { type:'property', propertyId:String(propertyId), userId:String(p.ownerId || '') };
+  document.getElementById('report-modal-title').textContent = 'Report Property';
+  document.getElementById('report-target-label').textContent = p.title || 'Selected property';
+  document.getElementById('report-modal').classList.add('active');
+  resetReportForm();
+  lucide.createIcons();
+}
+
+function openUserReport(userId) {
+  const id = String(userId || currentOwnerProfileId || '');
+  if (!id) { toast('User profile is not available.'); return; }
+  trustReportTarget = { type:'user', propertyId:null, userId:id };
+  const profile = ownerProfileCache[id];
+  document.getElementById('report-modal-title').textContent = 'Report User';
+  document.getElementById('report-target-label').textContent = profile?.full_name || 'NestFind member';
+  document.getElementById('report-modal').classList.add('active');
+  resetReportForm();
+  lucide.createIcons();
+}
+
+function resetReportForm() {
+  document.querySelectorAll('input[name="reportReason"]').forEach(r => r.checked = false);
+  const details = document.getElementById('report-details');
+  if (details) details.value = '';
+}
+
+async function submitTrustReport() {
+  if (!currentUser) { toast('Please sign in before submitting a report.'); closeModal('report-modal'); showScreen('auth'); return; }
+  if (!supabaseClient) { toast('Reporting is unavailable right now.'); return; }
+  const reason = document.querySelector('input[name="reportReason"]:checked')?.value;
+  const details = document.getElementById('report-details')?.value.trim() || '';
+  if (!reason) { toast('Choose a reason for the report.'); return; }
+  if (!trustReportTarget.type) { toast('Report target is missing.'); return; }
+  const button = document.querySelector('#report-modal .btn-primary');
+  if (button) { button.disabled = true; button.textContent = 'Submitting…'; }
+  try {
+    if (trustReportTarget.type === 'property') {
+      const { error } = await supabaseClient.from('property_reports').insert({
+        property_id: trustReportTarget.propertyId,
+        reporter_id: currentUser.id,
+        reported_user_id: trustReportTarget.userId || null,
+        reason,
+        details: details || null,
+        status:'open'
+      });
+      if (error) throw error;
+    } else {
+      const { error } = await supabaseClient.from('user_reports').insert({
+        reported_user_id: trustReportTarget.userId,
+        reporter_id: currentUser.id,
+        reason,
+        details: details || null,
+        status:'open'
+      });
+      if (error) throw error;
+    }
+    closeModal('report-modal');
+    toast('Report submitted. NestFind will review it.');
+  } catch (error) {
+    console.error('NestFind trust report error:', error);
+    toast(error?.message || 'Could not submit report. Please try again.');
+  } finally {
+    if (button) { button.disabled = false; button.textContent = 'Submit Report'; }
+  }
+}
+
 async function loadSupabaseProperties() {
   if (!supabaseClient) return;
   try {
@@ -5137,6 +5746,7 @@ async function loadSupabaseProperties() {
       .eq('status', 'active')
       .order('created_at', { ascending: false });
     if (error) throw error;
+    await loadPublicOwnerProfiles((data || []).map(row => row.owner_id));
     const remote = (data || []).map(dbPropertyToApp);
     const seedIds = new Set(PROPERTIES.map(p => String(p.id)));
     userListings = remote.filter(p => !seedIds.has(String(p.id)));
@@ -5156,6 +5766,8 @@ async function initNestFind() {
   bindDetailChatButton();
   renderHome();
   renderConversations();
+  renderNotifications();
+  updateNotificationBadge();
   updateProfileUI();
   const { data } = supabaseClient ? await supabaseClient.auth.getSession() : { data:{session:null} };
   if (data?.session?.user) {
@@ -5175,13 +5787,19 @@ async function initNestFind() {
         await loadSupabaseProperties();
         await loadViewingRequests();
         await loadRemoteConversations();
+        await loadNotifications();
         startRealtimeMessages();
+        startRealtimeNotifications();
+        startRealtimeSupport();
       } else {
         localStorage.removeItem('nf_user');
         viewings = [];
         conversations = [];
         chatMessages = {};
         stopRealtimeMessages();
+        stopRealtimeNotifications();
+        stopRealtimeSupport();
+        notifications = [];
         saveState();
       }
       updateProfileUI();
@@ -5194,7 +5812,10 @@ async function initNestFind() {
     await loadMessageAccessStatus();
     await loadViewingRequests();
     await loadRemoteConversations();
+    await loadNotifications();
     startRealtimeMessages();
+    startRealtimeNotifications();
+    startRealtimeSupport();
   }
   lucide.createIcons();
 }
