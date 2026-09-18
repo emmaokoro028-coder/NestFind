@@ -5820,6 +5820,1154 @@ async function initNestFind() {
   lucide.createIcons();
 }
 initNestFind();
+
+<!-- =========================================================
+     NESTFIND SUPPORT ADMIN — FULL ADMIN FEATURE
+     ========================================================= -->
+
+<style>
+  #nf-support-admin-menu {
+    display: none;
+  }
+
+  #nf-admin-screen {
+    position: absolute;
+    inset: 0;
+    z-index: 9999;
+    background: var(--bg, #f7f8fa);
+    display: none;
+    flex-direction: column;
+  }
+
+  #nf-admin-screen.active {
+    display: flex;
+  }
+
+  .nf-admin-header {
+    min-height: 56px;
+    padding: 10px 16px;
+    background: #fff;
+    border-bottom: 1px solid #e8ecf0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .nf-admin-back {
+    width: 40px;
+    height: 40px;
+    border: 0;
+    border-radius: 12px;
+    background: #f7f8fa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 22px;
+  }
+
+  .nf-admin-title {
+    flex: 1;
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .nf-admin-refresh {
+    width: 40px;
+    height: 40px;
+    border: 0;
+    border-radius: 12px;
+    background: #e8f5f0;
+    color: #0b6e4f;
+    cursor: pointer;
+    font-size: 18px;
+  }
+
+  .nf-admin-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+  }
+
+  .nf-admin-status {
+    background: #e8f5f0;
+    color: #0b6e4f;
+    border-radius: 14px;
+    padding: 13px 15px;
+    margin-bottom: 14px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .nf-admin-message {
+    background: #fff;
+    border: 1px solid #e8ecf0;
+    border-radius: 16px;
+    padding: 15px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,.04);
+  }
+
+  .nf-admin-message-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 9px;
+  }
+
+  .nf-admin-user {
+    font-weight: 700;
+    font-size: 14px;
+  }
+
+  .nf-admin-date {
+    font-size: 11px;
+    color: #8b93a1;
+  }
+
+  .nf-admin-message-text {
+    font-size: 14px;
+    line-height: 1.55;
+    color: #30363d;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .nf-admin-empty {
+    text-align: center;
+    padding: 70px 20px;
+    color: #8b93a1;
+  }
+
+  .nf-admin-empty-icon {
+    font-size: 42px;
+    margin-bottom: 12px;
+  }
+
+  .nf-admin-loading {
+    text-align: center;
+    padding: 60px 20px;
+    color: #8b93a1;
+  }
+
+  .nf-admin-reply {
+    margin-top: 12px;
+    display: flex;
+    gap: 8px;
+  }
+
+  .nf-admin-reply input {
+    flex: 1;
+    min-width: 0;
+    height: 42px;
+    border: 1px solid #e0e5e9;
+    border-radius: 11px;
+    padding: 0 12px;
+    font-family: inherit;
+    outline: none;
+  }
+
+  .nf-admin-reply input:focus {
+    border-color: #0b6e4f;
+  }
+
+  .nf-admin-reply button {
+    height: 42px;
+    padding: 0 14px;
+    border: 0;
+    border-radius: 11px;
+    background: #0b6e4f;
+    color: #fff;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .nf-admin-reply button:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+  }
+</style>
+
+
+<!-- ADMIN SCREEN -->
+
+<div id="nf-admin-screen">
+
+  <div class="nf-admin-header">
+
+    <button
+      class="nf-admin-back"
+      type="button"
+      onclick="closeNestFindAdmin()"
+      aria-label="Back"
+    >
+      ←
+    </button>
+
+    <div class="nf-admin-title">
+      🛡️ Support Admin
+    </div>
+
+    <button
+      class="nf-admin-refresh"
+      type="button"
+      onclick="loadNestFindAdminMessages()"
+      aria-label="Refresh"
+    >
+      ↻
+    </button>
+
+  </div>
+
+  <div class="nf-admin-content">
+
+    <div class="nf-admin-status">
+      Support Admin account active
+    </div>
+
+    <div id="nf-admin-messages">
+
+      <div class="nf-admin-loading">
+        Loading support messages...
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<script>
+(function () {
+
+  "use strict";
+
+  /*
+   * ==========================================================
+   * NESTFIND SUPPORT ADMIN
+   * ==========================================================
+   *
+   * Admin authorization comes from:
+   *
+   * public.support_admins
+   *
+   * The currently authenticated Supabase user's ID is checked
+   * against that table.
+   *
+   * Your current admin account:
+   *
+   * nestfind6184@gmail.com
+   *
+   * User ID:
+   *
+   * 0dc0d0b7-d13c-4884-8291-daf4af5a6a94
+   *
+   * ==========================================================
+   */
+
+
+  function nfGetSupabase() {
+
+    if (
+      typeof supabaseClient !== "undefined" &&
+      supabaseClient
+    ) {
+      return supabaseClient;
+    }
+
+    if (
+      typeof window.supabaseClient !== "undefined" &&
+      window.supabaseClient
+    ) {
+      return window.supabaseClient;
+    }
+
+    return null;
+  }
+
+
+  function nfEscape(value) {
+
+    return String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+
+  }
+
+
+  async function nfGetCurrentUser() {
+
+    const client = nfGetSupabase();
+
+    if (!client) {
+      return null;
+    }
+
+    try {
+
+      const result =
+        await client.auth.getUser();
+
+      if (result.error) {
+        console.error(
+          "NestFind auth error:",
+          result.error
+        );
+
+        return null;
+      }
+
+      return result.data?.user || null;
+
+    } catch (error) {
+
+      console.error(
+        "NestFind user error:",
+        error
+      );
+
+      return null;
+    }
+
+  }
+
+
+  async function nfIsSupportAdmin() {
+
+    const client = nfGetSupabase();
+
+    if (!client) {
+      console.error(
+        "NestFind: Supabase client unavailable."
+      );
+
+      return false;
+    }
+
+    const user =
+      await nfGetCurrentUser();
+
+    if (!user?.id) {
+      return false;
+    }
+
+    try {
+
+      const {
+        data,
+        error
+      } = await client
+        .from("support_admins")
+        .select("user_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (error) {
+
+        console.error(
+          "NestFind support admin query failed:",
+          error
+        );
+
+        return false;
+      }
+
+      return !!data;
+
+    } catch (error) {
+
+      console.error(
+        "NestFind support admin check failed:",
+        error
+      );
+
+      return false;
+    }
+
+  }
+
+
+  function nfFindProfileMenu() {
+
+    return document.querySelector(
+      "#screen-profile .profile-menu"
+    );
+
+  }
+
+
+  function nfCreateAdminMenuItem() {
+
+    let item =
+      document.getElementById(
+        "nf-support-admin-menu"
+      );
+
+    if (item) {
+      return item;
+    }
+
+    const menu =
+      nfFindProfileMenu();
+
+    if (!menu) {
+      return null;
+    }
+
+    item =
+      document.createElement("div");
+
+    item.id =
+      "nf-support-admin-menu";
+
+    item.className =
+      "profile-menu-item";
+
+    item.innerHTML = `
+      <div
+        class="profile-menu-icon"
+        style="
+          background:#E8F5F0;
+          color:#0B6E4F;
+        "
+      >
+        <i data-lucide="shield-check"></i>
+      </div>
+
+      <div class="profile-menu-text">
+
+        <div class="profile-menu-title">
+          Support Admin
+        </div>
+
+        <div class="profile-menu-desc">
+          Manage customer support
+        </div>
+
+      </div>
+
+      <div class="profile-menu-arrow">
+        <i data-lucide="chevron-right"></i>
+      </div>
+    `;
+
+    item.addEventListener(
+      "click",
+      function () {
+
+        openNestFindAdmin();
+
+      }
+    );
+
+    /*
+     * Put Support Admin immediately
+     * after Help & Support.
+     */
+
+    const menuItems =
+      Array.from(
+        menu.querySelectorAll(
+          ".profile-menu-item"
+        )
+      );
+
+    let helpItem = null;
+
+    for (
+      const menuItem of menuItems
+    ) {
+
+      const title =
+        menuItem.querySelector(
+          ".profile-menu-title"
+        );
+
+      if (
+        title &&
+        title.textContent
+          .trim()
+          .toLowerCase() ===
+          "help & support"
+      ) {
+
+        helpItem = menuItem;
+
+        break;
+      }
+
+    }
+
+    if (helpItem) {
+
+      helpItem.insertAdjacentElement(
+        "afterend",
+        item
+      );
+
+    } else {
+
+      /*
+       * Fallback: put it before Logout.
+       */
+
+      const logoutItem =
+        menuItems.find(
+          function (menuItem) {
+
+            const title =
+              menuItem.querySelector(
+                ".profile-menu-title"
+              );
+
+            return (
+              title &&
+              title.textContent
+                .trim()
+                .toLowerCase() ===
+                "log out"
+            );
+
+          }
+        );
+
+      if (logoutItem) {
+
+        logoutItem.insertAdjacentElement(
+          "beforebegin",
+          item
+        );
+
+      } else {
+
+        menu.appendChild(item);
+
+      }
+
+    }
+
+    if (
+      typeof lucide !== "undefined"
+    ) {
+
+      lucide.createIcons();
+
+    }
+
+    return item;
+
+  }
+
+
+  async function updateNestFindAdminVisibility() {
+
+    const isAdmin =
+      await nfIsSupportAdmin();
+
+    const item =
+      nfCreateAdminMenuItem();
+
+    if (!item) {
+
+      /*
+       * Profile may not have rendered yet.
+       * Try again shortly.
+       */
+
+      setTimeout(
+        updateNestFindAdminVisibility,
+        800
+      );
+
+      return;
+    }
+
+    item.style.display =
+      isAdmin
+        ? "flex"
+        : "none";
+
+    if (
+      isAdmin &&
+      typeof lucide !== "undefined"
+    ) {
+
+      lucide.createIcons();
+
+    }
+
+    console.log(
+      "NestFind Support Admin:",
+      isAdmin
+    );
+
+  }
+
+
+  async function openNestFindAdmin() {
+
+    const isAdmin =
+      await nfIsSupportAdmin();
+
+    if (!isAdmin) {
+
+      if (
+        typeof toast === "function"
+      ) {
+
+        toast(
+          "You do not have Support Admin access."
+        );
+
+      } else {
+
+        alert(
+          "You do not have Support Admin access."
+        );
+
+      }
+
+      return;
+    }
+
+    const screen =
+      document.getElementById(
+        "nf-admin-screen"
+      );
+
+    if (!screen) {
+      return;
+    }
+
+    /*
+     * Hide the normal NestFind screens.
+     */
+
+    document
+      .querySelectorAll(
+        ".screen"
+      )
+      .forEach(
+        function (element) {
+
+          element.classList.remove(
+            "active"
+          );
+
+        }
+      );
+
+    screen.classList.add(
+      "active"
+    );
+
+    await loadNestFindAdminMessages();
+
+  }
+
+
+  function closeNestFindAdmin() {
+
+    const screen =
+      document.getElementById(
+        "nf-admin-screen"
+      );
+
+    if (screen) {
+
+      screen.classList.remove(
+        "active"
+      );
+
+    }
+
+    const profile =
+      document.getElementById(
+        "screen-profile"
+      );
+
+    if (profile) {
+
+      profile.classList.add(
+        "active"
+      );
+
+    }
+
+    if (
+      typeof lucide !== "undefined"
+    ) {
+
+      lucide.createIcons();
+
+    }
+
+  }
+
+
+  async function loadNestFindAdminMessages() {
+
+    const container =
+      document.getElementById(
+        "nf-admin-messages"
+      );
+
+    if (!container) {
+      return;
+    }
+
+    const isAdmin =
+      await nfIsSupportAdmin();
+
+    if (!isAdmin) {
+
+      container.innerHTML = `
+        <div class="nf-admin-empty">
+
+          <div class="nf-admin-empty-icon">
+            🔒
+          </div>
+
+          <strong>
+            Admin access required
+          </strong>
+
+        </div>
+      `;
+
+      return;
+    }
+
+    const client =
+      nfGetSupabase();
+
+    if (!client) {
+
+      container.innerHTML = `
+        <div class="nf-admin-empty">
+
+          <div class="nf-admin-empty-icon">
+            ⚠️
+          </div>
+
+          <strong>
+            Supabase connection unavailable
+          </strong>
+
+        </div>
+      `;
+
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="nf-admin-loading">
+        Loading support messages...
+      </div>
+    `;
+
+    try {
+
+      /*
+       * Get all support messages.
+       *
+       * This uses the same columns already used
+       * by the customer support chat.
+       */
+
+      const {
+        data,
+        error
+      } = await client
+        .from("support_messages")
+        .select(
+          "id,user_id,sender_type,content,created_at"
+        )
+        .order(
+          "created_at",
+          {
+            ascending: false
+          }
+        );
+
+      if (error) {
+        throw error;
+      }
+
+      const messages =
+        data || [];
+
+      if (!messages.length) {
+
+        container.innerHTML = `
+          <div class="nf-admin-empty">
+
+            <div class="nf-admin-empty-icon">
+              💬
+            </div>
+
+            <strong>
+              No support messages yet
+            </strong>
+
+            <p style="margin-top:8px;">
+              Customer support messages will appear here.
+            </p>
+
+          </div>
+        `;
+
+        return;
+      }
+
+
+      /*
+       * Group messages by customer.
+       */
+
+      const grouped =
+        new Map();
+
+      messages.forEach(
+        function (message) {
+
+          const userId =
+            String(
+              message.user_id || "unknown"
+            );
+
+          if (
+            !grouped.has(userId)
+          ) {
+
+            grouped.set(
+              userId,
+              []
+            );
+
+          }
+
+          grouped
+            .get(userId)
+            .push(message);
+
+        }
+      );
+
+
+      let html = "";
+
+      grouped.forEach(
+        function (
+          customerMessages,
+          userId
+        ) {
+
+          const latest =
+            customerMessages[0];
+
+          html += `
+            <div
+              class="nf-admin-message"
+              data-user-id="${nfEscape(userId)}"
+            >
+
+              <div class="nf-admin-message-top">
+
+                <div>
+
+                  <div class="nf-admin-user">
+                    Customer
+                  </div>
+
+                  <div
+                    class="nf-admin-date"
+                    style="margin-top:3px;"
+                  >
+                    User ID:
+                    ${nfEscape(userId)}
+                  </div>
+
+                </div>
+
+                <div class="nf-admin-date">
+                  ${nfEscape(
+                    latest.created_at
+                      ? new Date(
+                          latest.created_at
+                        ).toLocaleString()
+                      : ""
+                  )}
+                </div>
+
+              </div>
+
+              <div
+                style="
+                  display:flex;
+                  flex-direction:column;
+                  gap:8px;
+                "
+              >
+
+                ${customerMessages
+                  .slice()
+                  .reverse()
+                  .map(
+                    function (message) {
+
+                      const fromAdmin =
+                        message.sender_type !==
+                        "user";
+
+                      return `
+                        <div
+                          style="
+                            padding:10px 12px;
+                            border-radius:12px;
+                            background:${
+                              fromAdmin
+                                ? "#E8F5F0"
+                                : "#F4F5F7"
+                            };
+                          "
+                        >
+
+                          <div
+                            style="
+                              font-size:11px;
+                              font-weight:700;
+                              color:#6b7280;
+                              margin-bottom:4px;
+                            "
+                          >
+                            ${
+                              fromAdmin
+                                ? "SUPPORT"
+                                : "CUSTOMER"
+                            }
+                          </div>
+
+                          <div
+                            class="nf-admin-message-text"
+                          >
+                            ${nfEscape(
+                              message.content || ""
+                            )}
+                          </div>
+
+                        </div>
+                      `;
+
+                    }
+                  )
+                  .join("")}
+
+              </div>
+
+              <div class="nf-admin-reply">
+
+                <input
+                  type="text"
+                  placeholder="Reply to customer..."
+                  data-reply-user="${nfEscape(
+                    userId
+                  )}"
+                >
+
+                <button
+                  type="button"
+                  onclick="sendNestFindAdminReply(
+                    '${nfEscape(userId)}'
+                  )"
+                >
+                  Send
+                </button>
+
+              </div>
+
+            </div>
+          `;
+
+        }
+      );
+
+
+      container.innerHTML =
+        html;
+
+    } catch (error) {
+
+      console.error(
+        "NestFind admin messages error:",
+        error
+      );
+
+      container.innerHTML = `
+        <div class="nf-admin-empty">
+
+          <div class="nf-admin-empty-icon">
+            ⚠️
+          </div>
+
+          <strong>
+            Could not load support messages
+          </strong>
+
+          <p style="margin-top:8px;">
+            ${nfEscape(
+              error?.message ||
+              "Database error"
+            )}
+          </p>
+
+        </div>
+      `;
+
+    }
+
+  }
+
+
+  window.openNestFindAdmin =
+    openNestFindAdmin;
+
+  window.closeNestFindAdmin =
+    closeNestFindAdmin;
+
+  window.loadNestFindAdminMessages =
+    loadNestFindAdminMessages;
+
+
+  window.sendNestFindAdminReply =
+    async function (userId) {
+
+      const client =
+        nfGetSupabase();
+
+      if (!client) {
+        return;
+      }
+
+      const isAdmin =
+        await nfIsSupportAdmin();
+
+      if (!isAdmin) {
+        return;
+      }
+
+      const input =
+        document.querySelector(
+          `input[data-reply-user="${CSS.escape(
+            String(userId)
+          )}"]`
+        );
+
+      const button =
+        input?.parentElement
+          ?.querySelector(
+            "button"
+          );
+
+      const text =
+        String(
+          input?.value || ""
+        ).trim();
+
+      if (!text) {
+        return;
+      }
+
+      if (button) {
+        button.disabled = true;
+        button.textContent = "Sending…";
+      }
+
+      try {
+
+        const {
+          error
+        } = await client
+          .from("support_messages")
+          .insert({
+            user_id: userId,
+            sender_type: "support",
+            content: text
+          });
+
+        if (error) {
+          throw error;
+        }
+
+        if (input) {
+          input.value = "";
+        }
+
+        await loadNestFindAdminMessages();
+
+        if (
+          typeof toast === "function"
+        ) {
+
+          toast(
+            "Reply sent."
+          );
+
+        }
+
+      } catch (error) {
+
+        console.error(
+          "NestFind admin reply error:",
+          error
+        );
+
+        if (
+          typeof toast === "function"
+        ) {
+
+          toast(
+            error?.message ||
+            "Could not send reply."
+          );
+
+        } else {
+
+          alert(
+            error?.message ||
+            "Could not send reply."
+          );
+
+        }
+
+      } finally {
+
+        if (button) {
+
+          button.disabled = false;
+          button.textContent = "Send";
+
+        }
+
+      }
+
+    };
+  
+    }
+}
+
+lucide.createIcons();
+initNestFind();
+
+setTimeout(() => {
+    updateNestFindAdminVisibility();
+}, 1000);
+
 </script>
 </body>
 </html>
