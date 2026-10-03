@@ -2468,6 +2468,7 @@ body {
         <div class="profile-email" id="profile-email">emma@gmail.com</div>
         <div class="premium-badge" id="membership-badge"><i data-lucide="crown"></i> Free Member</div>
       </div>
+      <button id="payment-recovery" class="btn btn-outline" type="button" style="display:none;width:100%;margin-bottom:12px" onclick="retryPendingPayment()">Retry payment verification</button>
       <div class="profile-menu">
         <div class="profile-menu-item" onclick="showMyListings()">
           <div class="profile-menu-icon"><i data-lucide="building-2"></i></div>
@@ -2621,7 +2622,7 @@ body {
       <button class="modal-close" onclick="closeModal('message-access-modal')"><i data-lucide="x"></i></button>
       <div class="modal-title">Message Property Owners</div>
       <div class="premium-hero">
-        <h3 id="message-access-title">Your 7-day free messaging trial has ended</h3>
+        <h3 id="message-access-title">Your 3-day free messaging trial has ended</h3>
         <p id="message-access-description">Pay ₦2,000 once to unlock messaging with any property owner on NestFind.</p>
         <div class="premium-feature-list">
           <div class="premium-feature"><i data-lucide="message-circle"></i><span>Message any property owner on NestFind.</span></div>
@@ -2635,7 +2636,7 @@ body {
         <div class="payment-summary-row total"><span>Total</span><span>₦2,000</span></div>
       </div>
       <button class="btn-primary" onclick="payForMessagingAccess()"><i data-lucide="lock-keyhole"></i> Pay ₦2,000 & Start Messaging</button>
-      <div class="payment-note">New members get a 7-day free messaging trial. After the trial, a one-time ₦2,000 payment permanently unlocks messaging with any property owner. Payment is processed securely through Paystack.</div>
+      <div class="payment-note">New members get a 3-day free messaging trial. After the trial, a one-time ₦2,000 payment permanently unlocks messaging with any property owner. Payment is processed securely through Paystack.</div>
     </div>
   </div>
 
@@ -2727,7 +2728,7 @@ const PAYSTACK_PUBLIC_KEY = 'PASTE_YOUR_PAYSTACK_PUBLIC_KEY_HERE';
 const PAYMENT_VERIFY_FUNCTION = 'verify-paystack-payment';
 const LISTING_PUBLICATION_FEE = 10000;
 const MESSAGE_ACCESS_FEE = 2000;
-const MESSAGE_TRIAL_DAYS = 7;
+const MESSAGE_TRIAL_DAYS = 3;
 const PREMIUM_PLANS = {
   monthly: { amount: 10000, days: 30, label: 'Monthly' },
   yearly: { amount: 120000, days: 365, label: 'Yearly' }
@@ -2735,6 +2736,7 @@ const PREMIUM_PLANS = {
 let pendingLargeVideoFile = null;
 let pendingListingPayload = null;
 let messageAccessUntil = 0;
+let messageAccessStatusError = false;
 let pendingChatConversationId = null;
 let pendingMessageNavigation = false;
 
@@ -2788,34 +2790,20 @@ function getMessageTrialEndsAt() {
 
 async function loadMessageAccessStatus() {
   const requestUserId = currentUser?.id;
-  if (!currentUser || !supabaseClient) {
-    messageAccessUntil = 0;
+  messageAccessUntil = 0;
+  messageAccessStatusError = false;
+  if (!requestUserId || !supabaseClient) return false;
+  try {
+    const {data, error} = await supabaseClient.rpc('nf_message_access_until');
+    if (currentUser?.id !== requestUserId) return false;
+    if (error) throw error;
+    messageAccessUntil = data === 'infinity' ? Number.POSITIVE_INFINITY : (Date.parse(data) || 0);
+    return messageAccessUntil > Date.now();
+  } catch (error) {
+    if (currentUser?.id === requestUserId) messageAccessStatusError = true;
+    console.warn('Could not verify messaging access:', error);
     return false;
   }
-
-  const trialUntil = getMessageTrialEndsAt();
-  let paidUntil = 0;
-  try {
-    const { data, error } = await supabaseClient
-      .from('message_access_payments')
-      .select('expires_at')
-      .eq('user_id', currentUser.id)
-      .eq('status', 'success')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (currentUser?.id !== requestUserId) return;
-    if (!error && data) {
-      // A verified ₦2,000 messaging payment permanently unlocks messaging.
-      paidUntil = data.expires_at ? new Date(data.expires_at).getTime() : Number.POSITIVE_INFINITY;
-    }
-  } catch (e) {
-    console.warn('Could not load messaging access status:', e);
-  }
-
-  if (currentUser?.id !== requestUserId) return false;
-  messageAccessUntil = Math.max(trialUntil, paidUntil);
-  return messageAccessUntil > Date.now();
 }
 
 function formatAccessRemaining(until) {
@@ -2835,10 +2823,11 @@ async function requireMessageAccess() {
 
   const ok = await loadMessageAccessStatus();
   if (ok) return true;
+  if (messageAccessStatusError) { toast('Messaging access could not be checked. Please try again shortly.'); return false; }
 
   const title = document.getElementById('message-access-title');
   const desc = document.getElementById('message-access-description');
-  if (title) title.textContent = 'Your 7-day free messaging trial has ended';
+  if (title) title.textContent = 'Your 3-day free messaging trial has ended';
   if (desc) desc.textContent = 'Pay ₦2,000 once to unlock messaging with any property owner on NestFind.';
   document.getElementById('message-access-modal')?.classList.add('active');
   refreshIcons();
@@ -2851,48 +2840,35 @@ function openMessageAccessModal() {
   const desc = document.getElementById('message-access-description');
   if (trialUntil > Date.now()) {
     if (title) title.textContent = `Your free messaging trial is active (${formatAccessRemaining(trialUntil)} left)`;
-    if (desc) desc.textContent = 'You can message any property owner for free during your 7-day trial.';
+    if (desc) desc.textContent = 'You can message any property owner for free during your 3-day trial.';
   } else {
-    if (title) title.textContent = 'Your 7-day free messaging trial has ended';
+    if (title) title.textContent = 'Your 3-day free messaging trial has ended';
     if (desc) desc.textContent = 'Pay ₦2,000 once to unlock messaging with any property owner on NestFind.';
   }
   document.getElementById('message-access-modal')?.classList.add('active');
   refreshIcons();
 }
 
-async function startPaystackPayment(purpose, amount, metadata = {}) {
-  if (!currentUser?.email) {
-    toast('Please sign in before making a payment.');
-    return;
-  }
-  if (!window.PaystackPop) {
-    toast('Payment service is still loading. Please try again.');
-    return;
-  }
-  if (!PAYSTACK_PUBLIC_KEY || PAYSTACK_PUBLIC_KEY.includes('PASTE_YOUR')) {
-    toast('Payments are not available yet. You have not been charged.');
-    return;
-  }
-
-  const popup = new PaystackPop();
-  popup.newTransaction({
-    key: PAYSTACK_PUBLIC_KEY,
-    email: currentUser.email,
-    amount: Number(amount) * 100,
-    currency: 'NGN',
-    metadata: { ...metadata, purpose, user_id: currentUser.id },
-    ...(purpose === 'premium' ? { planInterval: metadata.plan === 'yearly' ? 'annually' : 'monthly' } : {}),
-    onSuccess: async (transaction) => {
+function updatePaymentRecovery() {
+  const item = document.getElementById('payment-recovery');
+  if (item) item.style.display = currentUser && readStorage('nf_pending_payment_' + currentUser.id, null) ? 'block' : 'none';
+}
+async function retryPendingPayment() {
+  if (!currentUser) { showScreen('auth'); return; }
+  const paymentUserId = currentUser.id;
+  const pending = readStorage('nf_pending_payment_' + paymentUserId, null);
+  if (!pending) { toast('No payment is waiting for verification on this device.'); return; }
+  const {reference, purpose, plan} = pending;
       toast('Payment received. Verifying…');
       try {
         const { data, error } = await supabaseClient.functions.invoke(PAYMENT_VERIFY_FUNCTION, {
           body: {
-            reference: transaction.reference,
-            expected_amount: Number(amount),
+            reference: reference,
             purpose,
-            plan: metadata.plan || null
+            plan
           }
         });
+        if (currentUser?.id !== paymentUserId) return;
         if (error) throw error;
         if (!data?.verified) throw new Error(data?.message || 'Payment could not be verified.');
 
@@ -2932,12 +2908,46 @@ async function startPaystackPayment(purpose, amount, metadata = {}) {
           }
         } else if (purpose === 'listing') {
           closePaymentModals();
-          await publishListingAfterPayment(transaction.reference);
+          if (!pendingListingPayload) { toast('Payment verified. Complete your listing form, then publish without paying again.'); showScreen('add'); return; }
+          if (!(await publishListingAfterPayment(reference))) return;
         }
+        removeStorage('nf_pending_payment_' + paymentUserId);
+        updatePaymentRecovery();
       } catch (error) {
         console.error('NestFind payment verification error:', error);
-        toast('Payment was received, but verification failed. Please contact support before paying again.');
+        toast('Verification is pending. Use Retry payment verification in Profile. Reference: ' + reference);
       }
+
+}
+
+async function startPaystackPayment(purpose, amount, metadata = {}) {
+  if (!currentUser?.email) {
+    toast('Please sign in before making a payment.');
+    return;
+  }
+  if (readStorage('nf_pending_payment_' + currentUser.id, null)) { await retryPendingPayment(); return; }
+  if (!window.PaystackPop) {
+    toast('Payment service is still loading. Please try again.');
+    return;
+  }
+  if (!PAYSTACK_PUBLIC_KEY || PAYSTACK_PUBLIC_KEY.includes('PASTE_YOUR')) {
+    toast('Payments are not available yet. You have not been charged.');
+    return;
+  }
+
+  const paymentUserId = currentUser.id;
+  const popup = new PaystackPop();
+  popup.newTransaction({
+    key: PAYSTACK_PUBLIC_KEY,
+    email: currentUser.email,
+    amount: Number(amount) * 100,
+    currency: 'NGN',
+    metadata: { ...metadata, purpose, user_id: currentUser.id },
+    onSuccess: async (transaction) => {
+      writeStorage('nf_pending_payment_' + paymentUserId, {reference: transaction.reference, purpose, plan: metadata.plan || null});
+      updatePaymentRecovery();
+      if (currentUser?.id !== paymentUserId) { toast('Sign back into the paying account to verify payment. Reference: ' + transaction.reference); return; }
+      await retryPendingPayment();
     },
     onCancel: () => toast('Payment cancelled.'),
     onError: (error) => toast(error?.message || 'Payment could not be started.')
@@ -3373,7 +3383,7 @@ async function handleDetailChatClick() {
     renderChatMessages();
     showScreen('chat');
 
-    // Enforce the 7-day trial/payment gate after the chat screen is ready.
+    // Enforce the 3-day trial/payment gate after the chat screen is ready.
     if (!(await requireMessageAccess())) {
       return;
     }
@@ -3522,12 +3532,11 @@ async function resolveConversationName(conv) {
   if (!supabaseClient || !conv?.otherUserId) return conv?.name || 'NestFind Member';
   try {
     const { data } = await supabaseClient
-      .from('profiles')
-      .select('full_name,email')
+      .from('owner_public_profiles')
+      .select('full_name')
       .eq('id', conv.otherUserId)
       .maybeSingle();
     if (data?.full_name) return data.full_name;
-    if (data?.email) return data.email.split('@')[0];
   } catch (e) {}
   return conv?.name || 'NestFind Member';
 }
@@ -4086,6 +4095,7 @@ async function sendMessage() {
   const input = document.getElementById('chat-input');
   const text = input.value.trim();
   if (!text) return;
+  if (text.length > 5000) { toast('Messages must be 5,000 characters or fewer.'); return; }
 
   const conv = conversations.find(c => String(c.id) === String(currentChatId));
   if (!conv?.propertyId || !conv?.otherUserId) {
@@ -4621,12 +4631,13 @@ async function publishListing() {
   const period = periodForType(selectedListingType());
   const phone = document.getElementById('add-phone').value.trim();
 
-  if (!title || !description || !location || !Number.isFinite(price) || price <= 0 || [beds,baths,parking].some(n => !Number.isInteger(n) || n < 0)) {
-    toast('Add a title, description, location and positive price. Room counts must be whole numbers.');
+  if (title.length < 3 || description.length < 10 || location.length < 2 || city.length < 2 || !Number.isFinite(price) || price <= 0 || [beds,baths,parking].some(n => !Number.isInteger(n) || n < 0)) {
+    toast('Add a title (3+ characters), description (10+ characters), location and positive price. Room counts must be whole numbers.');
     document.querySelectorAll('#screen-add .form-section').forEach(el => el.classList.add('open'));
     return;
   }
 
+  if (photoFiles.length + photoUrls.length > 20) { toast('Use no more than 20 property photos.'); return; }
   if (!photoFiles.length && !photoUrls.length) { toast('Add at least one real property photo.'); document.getElementById('sec-photos').classList.add('open'); return; }
   pendingListingPayload = {
     owner_id: currentUser.id,
@@ -4675,9 +4686,8 @@ async function publishListingAfterPayment(reference) {
 
     toast(videoFile ? 'Payment verified. Uploading property media…' : 'Payment verified. Publishing property…');
     const { uploadedPhotos, uploadedVideo } = await uploadSelectedMedia();
-    const fallbackImage = 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&q=80';
     listing.photos = [...uploadedPhotos, ...photoUrls];
-    if (!listing.photos.length) listing.photos = [fallbackImage];
+    if (!listing.photos.length) throw new Error('Add at least one real property photo.');
     listing.video_url = uploadedVideo || '';
 
     const { data, error } = await supabaseClient.rpc('publish_property_with_payment', {
@@ -4696,9 +4706,11 @@ async function publishListingAfterPayment(reference) {
     toast('Payment confirmed. Property published successfully.');
     resetListingForm();
     showScreen('profile');
+    return true;
   } catch (err) {
     console.error('NestFind publish error:', err);
-    toast('Payment was successful, but the property could not be published: ' + (err.message || 'Database error'));
+    toast('Your payment is saved. Fix the listing and retry without paying again: ' + (err.message || 'Database error'));
+    return false;
   } finally {
     if (button) { button.disabled = false; button.textContent = 'Publish Listing'; }
   }
@@ -4728,7 +4740,7 @@ function updateProfileCounts() {
   updateNotificationBadge();
   loadMessageAccessStatus().then(() => {
     const msgEl = document.getElementById('count-messages');
-    if (msgEl) msgEl.textContent = messageAccessUntil > Date.now() ? (messageAccessUntil === Number.POSITIVE_INFINITY ? 'Messaging active · Permanent' : `Messaging active · ${formatAccessRemaining(messageAccessUntil)} left`) : '7-day free trial · ₦2,000 one-time after trial';
+    if (msgEl) msgEl.textContent = messageAccessUntil > Date.now() ? (messageAccessUntil === Number.POSITIVE_INFINITY ? 'Messaging active · Permanent' : `Messaging active · ${formatAccessRemaining(messageAccessUntil)} left`) : '3-day free trial · ₦2,000 one-time after trial';
   });
   updateMembershipBadge();
   const own = currentUser ? allProperties.filter(p => String(p.ownerId || '') === String(currentUser.id)).length : 0;
@@ -4746,6 +4758,7 @@ function updateProfileCounts() {
 }
 
 function updateProfileUI() {
+  updatePaymentRecovery();
   const name = currentUser?.user_metadata?.full_name || (currentUser ? 'NestFind Member' : 'Guest');
   const email = currentUser?.email || 'Sign in to manage your account';
   const avatar = document.getElementById('profile-avatar');
@@ -5387,9 +5400,10 @@ async function loadPremiumStatus() {
   if (!currentUser || !supabaseClient) { updateMembershipBadge(); return; }
   try {
     const { data, error } = await supabaseClient
-      .from('subscriptions')
+      .from('nf_payment_receipts')
       .select('expires_at')
-      .eq('status', 'active')
+      .eq('user_id', requestUserId)
+      .eq('purpose', 'premium')
       .gt('expires_at', new Date().toISOString())
       .order('expires_at', { ascending: false })
       .limit(1)
@@ -5397,10 +5411,10 @@ async function loadPremiumStatus() {
     if (currentUser?.id !== requestUserId) return;
     if (!error && data?.expires_at) {
       premiumUntil = new Date(data.expires_at).getTime();
-    } else if (!error) {
+    } else {
       premiumUntil = 0;
     }
-  } catch (e) { console.warn('Could not load premium status:', e); }
+  } catch (e) { if (currentUser?.id === requestUserId) premiumUntil = 0; console.warn('Could not load premium status:', e); }
   updateMembershipBadge();
 }
 

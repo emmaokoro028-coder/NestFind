@@ -20,6 +20,7 @@ function setup(initial = {}, sessionUser = null) {
  const query = {select(){return this;},eq(){return this;},gt(){return this;},in(){return this;},or(filter){queryFilters.push(filter);return this;},order(){return this;},limit(){return this;},maybeSingle:async()=>({data:null}),single:async()=>({data:{id:'new'}}),insert(){inserts++;return this;},upsert:async()=>({error:null}),then(resolve){return Promise.resolve({data:[],error:null}).then(resolve);}};
  const client = {
   auth: { getSession: async () => ({data:{session:sessionUser ? {user:sessionUser} : null}}), getUser:async()=>({data:{user:sessionUser}}),onAuthStateChange(callback){authListener=callback;}, signUp: async()=>({data:{user:{id:'unconfirmed'},session:null}}) },
+  rpc: async () => ({data:null,error:null}),
   from: () => query,
   removeChannel(){},
   channel(){return {on(_event,_filter,callback){realtimeHandlers.push(callback);return this;},subscribe(){return this;}}}
@@ -85,4 +86,37 @@ test('auth event callback returns synchronously',async()=> {
 });
 test('legacy cached premium value cannot grant membership',()=> {
  const s=setup({nf_premium_until:String(Date.now()+86400000)}); s.run('currentUser={id:"test"};loadAccountState()'); assert.equal(s.run('isPremiumMember()'),false);
+});
+test('messaging access comes from the server rather than browser trial dates',async()=>{
+ const s=setup();s.run('currentUser={id:"test",created_at:new Date().toISOString()}');
+ s.client.rpc=async()=>({data:new Date(Date.now()-1000).toISOString(),error:null});
+ assert.equal(await s.run('loadMessageAccessStatus()'),false);
+ s.client.rpc=async()=>({data:'infinity',error:null});
+ assert.equal(await s.run('loadMessageAccessStatus()'),true);
+ assert.equal(s.run('messageAccessUntil'),Infinity);
+});
+test('trial copy and duration are three days',()=>{
+ const s=setup();assert.equal(s.run('MESSAGE_TRIAL_DAYS'),3);
+ assert.ok(!fs.readFileSync(path.join(root,'index.html'),'utf8').includes('7-day'));
+});
+test('a late access response cannot unlock another account',async()=>{
+ const s=setup();s.run('currentUser={id:"alice"}');let done;
+ s.client.rpc=()=>new Promise(resolve=>done=resolve);
+ const request=s.run('loadMessageAccessStatus()');s.run('currentUser={id:"bob"};loadAccountState()');done({data:'infinity',error:null});
+ assert.equal(await request,false);assert.equal(s.run('messageAccessUntil'),0);
+});
+test('pending payment is retried instead of starting a second charge',async()=>{
+ const s=setup({'nf_pending_payment_test':JSON.stringify({reference:'saved-reference',purpose:'listing',plan:null})});
+ s.run('currentUser={id:"test",email:"test@example.invalid"}');let calls=0;
+ s.client.functions={invoke:async()=>{calls++;return {data:{verified:true},error:null};}};
+ await s.run('startPaystackPayment("listing",10000)');assert.equal(calls,1);
+ assert.match(s.element('toast').textContent,/without paying again/);
+ assert.ok(s.storage.has('nf_pending_payment_test'));
+});
+test('failed verification retains the reference for recovery',async()=>{
+ const s=setup({'nf_pending_payment_test':JSON.stringify({reference:'saved-reference',purpose:'listing',plan:null})});
+ s.run('currentUser={id:"test",email:"test@example.invalid"}');
+ s.client.functions={invoke:async()=>({data:{verified:false,message:'Pending'},error:null})};
+ await s.run('retryPendingPayment()');assert.ok(s.storage.has('nf_pending_payment_test'));
+ assert.match(s.element('toast').textContent,/saved-reference/);
 });

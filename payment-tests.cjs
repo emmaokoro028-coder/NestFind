@@ -1,0 +1,17 @@
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const vm=require('node:vm');
+const fs=require('node:fs');
+const context=vm.createContext({Deno:{serve(){}},Error});
+vm.runInContext(fs.readFileSync(__dirname+'/verify-paystack-payment.ts','utf8').replace(/^import .*\n/,''),context);
+const user={id:'owner',email:'owner@example.invalid'};
+const payment={status:'success',reference:'nf_test-reference',currency:'NGN',amount:200000,domain:'live',customer:{email:user.email},metadata:{user_id:user.id,purpose:'messaging'}};
+const validate=(p=payment,u=user,ref=payment.reference,purpose='messaging',plan=null,mode='live')=>context.validatePayment(p,u,ref,purpose,plan,mode);
+test('valid one-time messaging payment is accepted',()=>assert.equal(validate(),200000));
+test('underpayment cannot unlock messaging',()=>assert.throws(()=>validate({...payment,amount:1})));
+test('premium prices are defined on the server',()=>{assert.equal(context.expectedPrice('premium','yearly'),12000000);assert.throws(()=>context.expectedPrice('premium','invalid'));});
+test('one transaction cannot be repurposed as a listing purchase',()=>assert.throws(()=>validate({...payment,amount:1000000},user,payment.reference,'listing')));
+test('another account cannot claim a transaction',()=>assert.throws(()=>validate(payment,{...user,id:'other'})));
+test('test-mode payments cannot unlock live access',()=>assert.throws(()=>validate({...payment,domain:'test'})));
+test('wrong reference and unsuccessful transaction are rejected',()=>{assert.throws(()=>validate({...payment,reference:'other'}));assert.throws(()=>validate({...payment,status:'failed'}));});
+test('wrong currency and customer email are rejected',()=>{assert.throws(()=>validate({...payment,currency:'USD'}));assert.throws(()=>validate({...payment,customer:{email:'other@example.invalid'}}));});

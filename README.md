@@ -12,7 +12,7 @@ Deploy `index.html`, `improvements.js` and `improvements.css` together. Do not d
 
 ```sh
 python3 -m http.server 8765
-node --test tests.cjs
+node --test tests.cjs payment-tests.cjs
 ```
 
 Open http://localhost:8765. Supabase uses the existing public client configuration. Client-side checks do not replace server-side row-level security or payment verification.
@@ -30,12 +30,26 @@ Open http://localhost:8765. Supabase uses the existing public client configurati
 - Add responsive desktop layout, mobile zoom, keyboard controls, dialog focus handling, accessible labels and safer image URLs.
 - Update notification read state only after the server accepts the change.
 
+## Three-day trial and payment repair
+
+The owner selected **3 days of free messaging, then a one-time ₦2,000 permanent messaging unlock**. The existing ₦10,000 per-listing publication fee and premium prices are retained.
+
+The private database inspection found a different 30-day subscription system, missing legacy payment tables/publication RPC, and overly broad profile privileges. The follow-up aligns the app with the requested pricing without trusting client-side entitlements.
+
+- `database-security-repair.sql` limits private profiles to their owner/admin, prevents client changes to admin/verification/premium fields, and restricts notification edits to read state.
+- `database-payment-repair.sql` adds server-owned payment receipts, a server-calculated 3-day trial, permanent messaging activation, and publication that consumes a verified listing payment exactly once. Existing customer rows are retained. Apply the security script first: the payment script then removes the obsolete subscription requirement from viewing requests.
+- `verify-paystack-payment.ts` replaces the existing Edge Function with fixed server prices, account/purpose/currency/mode checks, and atomic idempotent payment recording. It follows Paystack's server verification guidance: https://paystack.com/docs/payments/verify-payments/.
+- The app uses the server entitlement result and provides payment-verification recovery to avoid asking a customer to pay twice. Trial text is consistently 3 days.
+
 ## Validation and remaining work
 
-The regression suite uses mocked authentication and database writes. It covers session handling, account isolation, UUID handlers, injection-safe rendering, filters, pricing, invalid forms, realtime messages, preservation of live workflow entry points and premium-state handling.
+30 app and payment-verifier checks pass. The inspected PostgreSQL schema, policies and triggers were reconstructed in a local PGlite database. Both migrations and `database-regression.sql` passed there: 3-day and expired trial behavior, paid permanent access, repeated payment/publication safety, profile privacy, denied admin escalation, valid viewings and message read updates. All synthetic fixtures were rolled back, leaving zero test users. This local validation does not replace a controlled production-schema check.
 
-Public browsing has been checked against the real catalogue. Desktop and mobile layouts are checked at 1280×720 and 390×844. End-to-end authenticated messaging, viewing acceptance, OTP email delivery, support, storage and payment flows still need controlled test accounts and private Supabase policy inspection. No production test messages, viewing requests, uploads or payments were submitted.
+After explicit owner approval, the combined migration/regression script passed against the production database inside a transaction ending with ROLLBACK. An additional restrictive viewing policy discovered during that check was corrected and included in both the local and production checks. The security and payment migrations were then committed, and the updated `verify-paystack-payment` Edge Function was deployed on 2026-10-04. No synthetic test users, messages, viewings or payments were retained.
 
-The existing `PAYSTACK_PUBLIC_KEY` is a placeholder. Paid listing publication and subscriptions cannot complete until the owner configures Paystack and verifies the server-side payment function/RPC. This repair does not bypass fees or payment checks. Do not put secret keys in client code.
+Remaining payment setup:
+1. Configure Paystack public key in the app and secret key only in Supabase. `PAYMENTS_MODE` must match `live` or `test`; the verifier defaults to live and refuses mismatched keys/payments. `APP_ORIGINS` must include the GitHub Pages origin.
+2. Deploy `index.html`, `improvements.js`, and `improvements.css` together from the live branch after updating the review PR. Do not deploy the new app before its database/Edge Function dependencies.
+3. Check OTP, authenticated messaging/viewing/media flows with controlled test accounts, then complete Paystack's test-mode verification before enabling live payments.
 
-`database-inspection.sql` contains read-only metadata queries for reviewing the private database. No database migration has been applied. Favorites are local to this browser, not synchronized between devices. Old shared browser-storage keys are left intact but are no longer used to identify a session or display another account's private records.
+Existing customer records, payments, messages, viewings and uploads were preserved. The Paystack public key remains a placeholder. Favorites are local to each account on this browser. Old shared browser-storage keys remain intact but do not identify sessions or provide access to private records.
