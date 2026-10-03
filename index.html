@@ -2,8 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>NestFind – Find your next place</title>
+<meta name="description" content="Discover homes, apartments, shops and short stays with NestFind. Search by location, budget and property type.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -1957,6 +1958,7 @@ body {
 .status-banner svg{width:17px;height:17px;flex:0 0 auto}
 
 </style>
+<link rel="stylesheet" href="improvements.css">
 </head>
 <body>
 <div class="app-shell" id="app">
@@ -2047,7 +2049,7 @@ body {
           <div class="home-brand-icon"><i data-lucide="home"></i></div>
           <div>
             <div class="home-brand-name">NestFind</div>
-            <div class="location-selector" onclick="toast('Location: Lagos, Nigeria')">
+            <div class="location-selector" onclick="openLocationSearch()">
               <i data-lucide="map-pin"></i> Lagos, Nigeria <i data-lucide="chevron-down" style="width:14px;height:14px"></i>
             </div>
           </div>
@@ -2096,13 +2098,13 @@ body {
         </div>
       </div>
       <div class="section-header">
-        <span class="section-title">Featured Properties</span>
+        <span class="section-title">Explore Properties</span>
         <button class="see-all" onclick="showScreen('search')">See all</button>
       </div>
       <div class="property-scroll" id="featured-properties"></div>
       <div class="section-header" style="margin-top:8px">
-        <span class="section-title">Near You</span>
-        <button class="see-all" onclick="showScreen('map')">Map View</button>
+        <span class="section-title">Latest Listings</span>
+        <button class="see-all" onclick="openLocationSearch()">Find an area</button>
       </div>
       <div class="property-scroll" id="near-properties"></div>
     </div>
@@ -2130,7 +2132,7 @@ body {
     <div class="header">
       <button class="header-back" onclick="navTo('home')"><i data-lucide="arrow-left"></i></button>
       <div class="header-title">Search Properties</div>
-      <button class="icon-btn" onclick="toast('Advanced filters coming soon')"><i data-lucide="sliders-horizontal"></i></button>
+      <button class="icon-btn" onclick="openFilters()"><i data-lucide="sliders-horizontal"></i></button>
     </div>
     <div class="search-filters">
       <div class="search-bar" style="margin-bottom:12px">
@@ -2146,9 +2148,9 @@ body {
         <button class="filter-tab" data-type="room" onclick="setSearchType('room', this)">Room</button>
       </div>
       <div class="filter-row">
-        <button class="filter-chip" onclick="togglePriceFilter()"><i data-lucide="naira-sign"></i> Price <i data-lucide="chevron-down"></i></button>
+        <button class="filter-chip" onclick="togglePriceFilter()"><span aria-hidden="true">₦</span> Price <i data-lucide="chevron-down"></i></button>
         <button class="filter-chip" onclick="toggleBedFilter()"><i data-lucide="bed"></i> Bedrooms <i data-lucide="chevron-down"></i></button>
-        <button class="filter-chip" onclick="toast('Property type filter')"><i data-lucide="home"></i> Property Type <i data-lucide="chevron-down"></i></button>
+        <button class="filter-chip" onclick="openFilters()"><i data-lucide="home"></i> Property Type <i data-lucide="chevron-down"></i></button>
       </div>
     </div>
     <div class="results-bar">
@@ -2466,6 +2468,7 @@ body {
         <div class="profile-email" id="profile-email">emma@gmail.com</div>
         <div class="premium-badge" id="membership-badge"><i data-lucide="crown"></i> Free Member</div>
       </div>
+      <button id="payment-recovery" class="btn btn-outline" type="button" style="display:none;width:100%;margin-bottom:12px" onclick="retryPendingPayment()">Retry payment verification</button>
       <div class="profile-menu">
         <div class="profile-menu-item" onclick="showMyListings()">
           <div class="profile-menu-icon"><i data-lucide="building-2"></i></div>
@@ -2619,7 +2622,7 @@ body {
       <button class="modal-close" onclick="closeModal('message-access-modal')"><i data-lucide="x"></i></button>
       <div class="modal-title">Message Property Owners</div>
       <div class="premium-hero">
-        <h3 id="message-access-title">Your 7-day free messaging trial has ended</h3>
+        <h3 id="message-access-title">Your 3-day free messaging trial has ended</h3>
         <p id="message-access-description">Pay ₦2,000 once to unlock messaging with any property owner on NestFind.</p>
         <div class="premium-feature-list">
           <div class="premium-feature"><i data-lucide="message-circle"></i><span>Message any property owner on NestFind.</span></div>
@@ -2633,7 +2636,7 @@ body {
         <div class="payment-summary-row total"><span>Total</span><span>₦2,000</span></div>
       </div>
       <button class="btn-primary" onclick="payForMessagingAccess()"><i data-lucide="lock-keyhole"></i> Pay ₦2,000 & Start Messaging</button>
-      <div class="payment-note">New members get a 7-day free messaging trial. After the trial, a one-time ₦2,000 payment permanently unlocks messaging with any property owner. Payment is processed securely through Paystack.</div>
+      <div class="payment-note">New members get a 3-day free messaging trial. After the trial, a one-time ₦2,000 payment permanently unlocks messaging with any property owner. Payment is processed securely through Paystack.</div>
     </div>
   </div>
 
@@ -2686,248 +2689,21 @@ body {
     </div>
   </div>
 
-  <div class="toast" id="toast"></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 </div>
 
 <script>
-// ==================== DATA ====================
-const PROPERTIES = [
-  {
-    id: 1,
-    title: "3 Bedroom Apartment",
-    location: "Lekki, Lagos",
-    area: "Lekki",
-    price: 3500000,
-    period: "year",
-    type: "rent",
-    propType: "Apartment",
-    beds: 3, baths: 3, parking: 1,
-    verified: true,
-    image: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=600&q=80",
-    images: [
-      "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&q=80",
-      "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=80",
-      "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800&q=80"
-    ],
-    description: "Beautiful 3 bedroom apartment in a secure estate with 24/7 power, good water supply, and close to shops, schools, and malls. Spacious living area, fitted kitchen, and modern finishes throughout.",
-    amenities: ["24/7 Security", "Good Water", "Parking", "Furnished", "24/7 Power", "CCTV"],
-    owner: "Mr. Adewale",
-    ownerAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&q=80",
-    mapX: 58, mapY: 20,
-    featured: true,
-    created: "2026-08-15"
-  },
-  {
-    id: 2,
-    title: "4 Bedroom Duplex",
-    location: "Ajah, Lagos",
-    area: "Ajah",
-    price: 95000000,
-    period: "sale",
-    type: "buy",
-    propType: "Duplex",
-    beds: 4, baths: 4, parking: 2,
-    verified: true,
-    image: "https://images.unsplash.com/photo-1600585154526-990dced4db0d?w=600&q=80",
-    images: ["https://images.unsplash.com/photo-1600585154526-990dced4db0d?w=800&q=80"],
-    description: "Luxury 4 bedroom duplex with BQ in a gated community. Fully detached, modern architecture, swimming pool access, and premium finishes.",
-    amenities: ["24/7 Security", "Swimming Pool", "Parking", "BQ", "Generator"],
-    owner: "Luxury Homes NG",
-    ownerAvatar: "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=100&q=80",
-    mapX: 72, mapY: 24,
-    featured: true,
-    created: "2026-08-20"
-  },
-  {
-    id: 3,
-    title: "2 Bedroom Apartment",
-    location: "Ikoyi, Lagos",
-    area: "Ikoyi",
-    price: 2000000,
-    period: "year",
-    type: "rent",
-    propType: "Apartment",
-    beds: 2, baths: 2, parking: 1,
-    verified: true,
-    image: "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600&q=80",
-    images: ["https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&q=80"],
-    description: "Well-maintained 2 bedroom apartment in the heart of Ikoyi. Close to embassies, restaurants, and business districts. All rooms en-suite.",
-    amenities: ["24/7 Security", "Good Water", "Parking", "Furnished"],
-    owner: "Mr. Collins",
-    ownerAvatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&q=80",
-    mapX: 45, mapY: 30,
-    featured: true,
-    created: "2026-09-01"
-  },
-  {
-    id: 4,
-    title: "Self Contain",
-    location: "Yaba, Lagos",
-    area: "Yaba",
-    price: 600000,
-    period: "year",
-    type: "rent",
-    propType: "Self Contain",
-    beds: 1, baths: 1, parking: 0,
-    verified: true,
-    image: "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=600&q=80",
-    images: ["https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800&q=80"],
-    description: "Clean self-contained apartment ideal for students or young professionals. Walking distance to University of Lagos and Yaba tech hub.",
-    amenities: ["Good Water", "Furnished", "Security"],
-    owner: "Sarah Daniels",
-    ownerAvatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&q=80",
-    mapX: 32, mapY: 44,
-    featured: false,
-    created: "2026-08-28"
-  },
-  {
-    id: 5,
-    title: "3 Bedroom Apartment",
-    location: "Lekki, Lagos",
-    area: "Lekki",
-    price: 3500000,
-    period: "year",
-    type: "rent",
-    propType: "Apartment",
-    beds: 3, baths: 3, parking: 1,
-    verified: true,
-    image: "https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=600&q=80",
-    images: ["https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=800&q=80"],
-    description: "Spacious 3 bedroom flat in a serene estate. Newly renovated with modern fittings, POP ceilings, and ample parking.",
-    amenities: ["24/7 Security", "Good Water", "Parking", "Furnished", "24/7 Power"],
-    owner: "Mr. Adewale",
-    ownerAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&q=80",
-    mapX: 62, mapY: 18,
-    featured: true,
-    created: "2026-09-05"
-  },
-  {
-    id: 6,
-    title: "Shop - Ikeja",
-    location: "Ikeja, Lagos",
-    area: "Ikeja",
-    price: 2500000,
-    period: "year",
-    type: "shop",
-    propType: "Shop",
-    beds: 0, baths: 1, parking: 0,
-    verified: false,
-    image: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=600&q=80",
-    images: ["https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800&q=80"],
-    description: "30sqm shop space in a busy commercial area of Ikeja. High foot traffic, suitable for retail or services. Rent is ₦2,500,000 yearly.",
-    amenities: ["Security", "Good Location"],
-    owner: "Bright Properties",
-    ownerAvatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&q=80",
-    mapX: 15, mapY: 48,
-    featured: false,
-    created: "2026-08-10"
-  },
-  {
-    id: 7,
-    title: "Hotel Room - Victoria Island",
-    location: "Victoria Island, Lagos",
-    area: "Victoria Island",
-    price: 45000,
-    period: "night",
-    type: "hotel",
-    propType: "Hotel Room",
-    beds: 1, baths: 1, parking: 1,
-    verified: true,
-    image: "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=600&q=80",
-    images: ["https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=800&q=80"],
-    description: "Comfortable hotel room with ocean view on Victoria Island. Includes breakfast, WiFi, and 24-hour room service.",
-    amenities: ["WiFi", "Breakfast", "AC", "Parking", "Room Service"],
-    owner: "Comfort Stay Hotel",
-    ownerAvatar: "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=100&q=80",
-    mapX: 50, mapY: 40,
-    featured: false,
-    created: "2026-09-02"
-  },
-  {
-    id: 8,
-    title: "Studio Room",
-    location: "Surulere, Lagos",
-    area: "Surulere",
-    price: 450000,
-    period: "year",
-    type: "room",
-    propType: "Studio",
-    beds: 1, baths: 1, parking: 0,
-    verified: false,
-    image: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=600&q=80",
-    images: ["https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&q=80"],
-    description: "Affordable studio room in Surulere. Shared kitchen and bathroom facilities. Ideal for students or young workers.",
-    amenities: ["Shared Kitchen", "Security"],
-    owner: "Mrs. Okonkwo",
-    ownerAvatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&q=80",
-    mapX: 22, mapY: 58,
-    featured: false,
-    created: "2026-08-25"
-  },
-  {
-    id: 9,
-    title: "5 Bedroom Mansion",
-    location: "Chevron, Lagos",
-    area: "Chevron",
-    price: 180000000,
-    period: "sale",
-    type: "buy",
-    propType: "Duplex",
-    beds: 5, baths: 6, parking: 4,
-    verified: true,
-    image: "https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=600&q=80",
-    images: ["https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800&q=80"],
-    description: "Stunning 5 bedroom mansion in Chevron. Private swimming pool, cinema room, staff quarters, and smart home features.",
-    amenities: ["Pool", "Cinema", "Smart Home", "24/7 Security", "Generator", "Parking"],
-    owner: "Elite Realty",
-    ownerAvatar: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=100&q=80",
-    mapX: 68, mapY: 28,
-    featured: true,
-    created: "2026-09-08"
-  },
-  {
-    id: 10,
-    title: "2 Bedroom Flat",
-    location: "Ikorodu, Lagos",
-    area: "Ikorodu",
-    price: 800000,
-    period: "year",
-    type: "rent",
-    propType: "Apartment",
-    beds: 2, baths: 2, parking: 1,
-    verified: false,
-    image: "https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=600&q=80",
-    images: ["https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=800&q=80"],
-    description: "Affordable 2 bedroom flat in a quiet part of Ikorodu. Newly painted, tiled floors, and good road access.",
-    amenities: ["Parking", "Security", "Good Water"],
-    owner: "Mr. Bello",
-    ownerAvatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=100&q=80",
-    mapX: 80, mapY: 55,
-    featured: false,
-    created: "2026-08-18"
-  }
-];
-
-const DEFAULT_CONVERSATIONS = [
-  { id: 1, propertyId: 1, name: "Mr. Adewale", avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&q=80", property: "3 Bedroom Apartment - Lekki", lastMessage: "Yes, the house is still available. We can schedule a viewing.", time: "10:24 AM", unread: true },
-  { id: 2, propertyId: 2, name: "Luxury Homes NG", avatar: "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=100&q=80", property: "4 Bedroom Duplex - Ajah", lastMessage: "Good morning! When are you available to view?", time: "9:18 AM", unread: true },
-  { id: 3, propertyId: 4, name: "Sarah Daniels", avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&q=80", property: "Self Contain - Yaba", lastMessage: "Can I schedule a viewing for tomorrow?", time: "Yesterday", unread: false },
-  { id: 4, propertyId: 6, name: "Bright Properties", avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&q=80", property: "Shop - Ikeja", lastMessage: "The shop is 30sqm. Rent is ₦2,500,000 yearly.", time: "Yesterday", unread: false },
-  { id: 5, propertyId: 3, name: "Mr. Collins", avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&q=80", property: "2 Bedroom Apartment - Ikoyi", lastMessage: "Perfect, see you then.", time: "Mon", unread: false },
-  { id: 6, propertyId: 7, name: "Comfort Stay Hotel", avatar: "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=100&q=80", property: "Hotel Room - Victoria Island", lastMessage: "You're welcome!", time: "Mon", unread: false }
-];
-
 // ==================== STATE ====================
-let currentUser = JSON.parse(localStorage.getItem('nf_user') || 'null');
+let currentUser = null;
 let viewingRefreshTimer = null;
 let viewingStatusBusy = new Set();
-let favorites = JSON.parse(localStorage.getItem('nf_favorites') || '[]');
-let conversations = JSON.parse(localStorage.getItem('nf_conversations') || 'null') || DEFAULT_CONVERSATIONS;
-let chatMessages = JSON.parse(localStorage.getItem('nf_chat_messages') || '{}');
-let viewings = JSON.parse(localStorage.getItem('nf_viewings') || '[]');
-let notifications = JSON.parse(localStorage.getItem('nf_notifications') || '[]');
+let favorites = [];
+let conversations = [];
+let chatMessages = {};
+let viewings = [];
+let notifications = [];
 let realtimeNotificationChannel = null;
-let userListings = JSON.parse(localStorage.getItem('nf_listings') || '[]');
+let userListings = [];
 let currentPropertyId = null;
 let currentOwnerProfileId = null;
 let trustReportTarget = { type: null, propertyId: null, userId: null };
@@ -2945,14 +2721,14 @@ let pendingSignup = null;
 let otpResendTimer = null;
 let otpResendSeconds = 0;
 let screenHistory = [];
-let allProperties = [...PROPERTIES, ...userListings];
+let allProperties = [];
 
 // Payment configuration. Add your Paystack PUBLIC key here. Never put a Paystack secret key in this file.
 const PAYSTACK_PUBLIC_KEY = 'PASTE_YOUR_PAYSTACK_PUBLIC_KEY_HERE';
 const PAYMENT_VERIFY_FUNCTION = 'verify-paystack-payment';
 const LISTING_PUBLICATION_FEE = 10000;
 const MESSAGE_ACCESS_FEE = 2000;
-const MESSAGE_TRIAL_DAYS = 7;
+const MESSAGE_TRIAL_DAYS = 3;
 const PREMIUM_PLANS = {
   monthly: { amount: 10000, days: 30, label: 'Monthly' },
   yearly: { amount: 120000, days: 365, label: 'Yearly' }
@@ -2960,6 +2736,7 @@ const PREMIUM_PLANS = {
 let pendingLargeVideoFile = null;
 let pendingListingPayload = null;
 let messageAccessUntil = 0;
+let messageAccessStatusError = false;
 let pendingChatConversationId = null;
 let pendingMessageNavigation = false;
 
@@ -2980,14 +2757,14 @@ function formatNaira(amount) {
 }
 
 function isPremiumMember() {
-  return Number(localStorage.getItem('nf_premium_until') || 0) > Date.now();
+  return !!currentUser && premiumUntil > Date.now();
 }
 
 function updateMembershipBadge() {
   const el = document.getElementById('membership-badge');
   if (!el) return;
   el.innerHTML = isPremiumMember() ? '<i data-lucide="crown"></i> Premium Member' : '<i data-lucide="crown"></i> Free Member';
-  if (window.lucide) lucide.createIcons();
+  if (window.lucide) refreshIcons();
 }
 
 function openPremiumModal(reason = '') {
@@ -2996,7 +2773,7 @@ function openPremiumModal(reason = '') {
     message.textContent = reason || 'Videos larger than 50 MB require NestFind Premium. Choose a monthly or yearly plan to continue.';
   }
   document.getElementById('premium-modal')?.classList.add('active');
-  lucide.createIcons();
+  refreshIcons();
 }
 
 function closePaymentModals() {
@@ -3012,32 +2789,21 @@ function getMessageTrialEndsAt() {
 }
 
 async function loadMessageAccessStatus() {
-  if (!currentUser || !supabaseClient) {
-    messageAccessUntil = 0;
+  const requestUserId = currentUser?.id;
+  messageAccessUntil = 0;
+  messageAccessStatusError = false;
+  if (!requestUserId || !supabaseClient) return false;
+  try {
+    const {data, error} = await supabaseClient.rpc('nf_message_access_until');
+    if (currentUser?.id !== requestUserId) return false;
+    if (error) throw error;
+    messageAccessUntil = data === 'infinity' ? Number.POSITIVE_INFINITY : (Date.parse(data) || 0);
+    return messageAccessUntil > Date.now();
+  } catch (error) {
+    if (currentUser?.id === requestUserId) messageAccessStatusError = true;
+    console.warn('Could not verify messaging access:', error);
     return false;
   }
-
-  const trialUntil = getMessageTrialEndsAt();
-  let paidUntil = 0;
-  try {
-    const { data, error } = await supabaseClient
-      .from('message_access_payments')
-      .select('expires_at')
-      .eq('user_id', currentUser.id)
-      .eq('status', 'success')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (!error && data) {
-      // A verified ₦2,000 messaging payment permanently unlocks messaging.
-      paidUntil = data.expires_at ? new Date(data.expires_at).getTime() : Number.POSITIVE_INFINITY;
-    }
-  } catch (e) {
-    console.warn('Could not load messaging access status:', e);
-  }
-
-  messageAccessUntil = Math.max(trialUntil, paidUntil);
-  return messageAccessUntil > Date.now();
 }
 
 function formatAccessRemaining(until) {
@@ -3057,13 +2823,14 @@ async function requireMessageAccess() {
 
   const ok = await loadMessageAccessStatus();
   if (ok) return true;
+  if (messageAccessStatusError) { toast('Messaging access could not be checked. Please try again shortly.'); return false; }
 
   const title = document.getElementById('message-access-title');
   const desc = document.getElementById('message-access-description');
-  if (title) title.textContent = 'Your 7-day free messaging trial has ended';
+  if (title) title.textContent = 'Your 3-day free messaging trial has ended';
   if (desc) desc.textContent = 'Pay ₦2,000 once to unlock messaging with any property owner on NestFind.';
   document.getElementById('message-access-modal')?.classList.add('active');
-  lucide.createIcons();
+  refreshIcons();
   return false;
 }
 
@@ -3073,48 +2840,35 @@ function openMessageAccessModal() {
   const desc = document.getElementById('message-access-description');
   if (trialUntil > Date.now()) {
     if (title) title.textContent = `Your free messaging trial is active (${formatAccessRemaining(trialUntil)} left)`;
-    if (desc) desc.textContent = 'You can message any property owner for free during your 7-day trial.';
+    if (desc) desc.textContent = 'You can message any property owner for free during your 3-day trial.';
   } else {
-    if (title) title.textContent = 'Your 7-day free messaging trial has ended';
+    if (title) title.textContent = 'Your 3-day free messaging trial has ended';
     if (desc) desc.textContent = 'Pay ₦2,000 once to unlock messaging with any property owner on NestFind.';
   }
   document.getElementById('message-access-modal')?.classList.add('active');
-  lucide.createIcons();
+  refreshIcons();
 }
 
-async function startPaystackPayment(purpose, amount, metadata = {}) {
-  if (!currentUser?.email) {
-    toast('Please sign in before making a payment.');
-    return;
-  }
-  if (!window.PaystackPop) {
-    toast('Payment service is still loading. Please try again.');
-    return;
-  }
-  if (!PAYSTACK_PUBLIC_KEY || PAYSTACK_PUBLIC_KEY.includes('PASTE_YOUR')) {
-    toast('Paystack is not configured yet. Add your public key first.');
-    return;
-  }
-
-  const popup = new PaystackPop();
-  popup.newTransaction({
-    key: PAYSTACK_PUBLIC_KEY,
-    email: currentUser.email,
-    amount: Number(amount) * 100,
-    currency: 'NGN',
-    metadata: { ...metadata, purpose, user_id: currentUser.id },
-    ...(purpose === 'premium' ? { planInterval: metadata.plan === 'yearly' ? 'annually' : 'monthly' } : {}),
-    onSuccess: async (transaction) => {
+function updatePaymentRecovery() {
+  const item = document.getElementById('payment-recovery');
+  if (item) item.style.display = currentUser && readStorage('nf_pending_payment_' + currentUser.id, null) ? 'block' : 'none';
+}
+async function retryPendingPayment() {
+  if (!currentUser) { showScreen('auth'); return; }
+  const paymentUserId = currentUser.id;
+  const pending = readStorage('nf_pending_payment_' + paymentUserId, null);
+  if (!pending) { toast('No payment is waiting for verification on this device.'); return; }
+  const {reference, purpose, plan} = pending;
       toast('Payment received. Verifying…');
       try {
         const { data, error } = await supabaseClient.functions.invoke(PAYMENT_VERIFY_FUNCTION, {
           body: {
-            reference: transaction.reference,
-            expected_amount: Number(amount),
+            reference: reference,
             purpose,
-            plan: metadata.plan || null
+            plan
           }
         });
+        if (currentUser?.id !== paymentUserId) return;
         if (error) throw error;
         if (!data?.verified) throw new Error(data?.message || 'Payment could not be verified.');
 
@@ -3132,10 +2886,7 @@ async function startPaystackPayment(purpose, amount, metadata = {}) {
             updateBottomNav('messages');
           }
         } else if (purpose === 'premium') {
-          const days = PREMIUM_PLANS[metadata.plan]?.days || 30;
-          const currentUntil = Number(localStorage.getItem('nf_premium_until') || 0);
-          const base = Math.max(Date.now(), currentUntil);
-          localStorage.setItem('nf_premium_until', String(base + days * 24 * 60 * 60 * 1000));
+          await loadPremiumStatus();
           updateMembershipBadge();
           closePaymentModals();
           toast('Premium activated successfully.');
@@ -3157,12 +2908,46 @@ async function startPaystackPayment(purpose, amount, metadata = {}) {
           }
         } else if (purpose === 'listing') {
           closePaymentModals();
-          await publishListingAfterPayment(transaction.reference);
+          if (!pendingListingPayload) { toast('Payment verified. Complete your listing form, then publish without paying again.'); showScreen('add'); return; }
+          if (!(await publishListingAfterPayment(reference))) return;
         }
+        removeStorage('nf_pending_payment_' + paymentUserId);
+        updatePaymentRecovery();
       } catch (error) {
         console.error('NestFind payment verification error:', error);
-        toast('Payment was received, but verification failed. Please contact support before paying again.');
+        toast('Verification is pending. Use Retry payment verification in Profile. Reference: ' + reference);
       }
+
+}
+
+async function startPaystackPayment(purpose, amount, metadata = {}) {
+  if (!currentUser?.email) {
+    toast('Please sign in before making a payment.');
+    return;
+  }
+  if (readStorage('nf_pending_payment_' + currentUser.id, null)) { await retryPendingPayment(); return; }
+  if (!window.PaystackPop) {
+    toast('Payment service is still loading. Please try again.');
+    return;
+  }
+  if (!PAYSTACK_PUBLIC_KEY || PAYSTACK_PUBLIC_KEY.includes('PASTE_YOUR')) {
+    toast('Payments are not available yet. You have not been charged.');
+    return;
+  }
+
+  const paymentUserId = currentUser.id;
+  const popup = new PaystackPop();
+  popup.newTransaction({
+    key: PAYSTACK_PUBLIC_KEY,
+    email: currentUser.email,
+    amount: Number(amount) * 100,
+    currency: 'NGN',
+    metadata: { ...metadata, purpose, user_id: currentUser.id },
+    onSuccess: async (transaction) => {
+      writeStorage('nf_pending_payment_' + paymentUserId, {reference: transaction.reference, purpose, plan: metadata.plan || null});
+      updatePaymentRecovery();
+      if (currentUser?.id !== paymentUserId) { toast('Sign back into the paying account to verify payment. Reference: ' + transaction.reference); return; }
+      await retryPendingPayment();
     },
     onCancel: () => toast('Payment cancelled.'),
     onError: (error) => toast(error?.message || 'Payment could not be started.')
@@ -3195,14 +2980,7 @@ function toast(msg) {
 }
 
 function saveState() {
-  localStorage.setItem('nf_favorites', JSON.stringify(favorites));
-  localStorage.setItem('nf_conversations', JSON.stringify(conversations));
-  localStorage.setItem('nf_chat_messages', JSON.stringify(chatMessages));
-  localStorage.setItem('nf_viewings', JSON.stringify(viewings));
-  localStorage.setItem('nf_notifications', JSON.stringify(notifications));
-  saveSupportMessages();
-  localStorage.setItem('nf_listings', JSON.stringify(userListings));
-  if (currentUser) localStorage.setItem('nf_user', JSON.stringify(currentUser));
+  writeStorage(accountStorageKey(), { favorites });
 }
 
 function getProperty(id) {
@@ -3211,32 +2989,28 @@ function getProperty(id) {
 
 // ==================== NAVIGATION ====================
 function showScreen(id) {
+  if (!document.getElementById('screen-' + id)) return;
+  if (id !== 'detail') closeDetailVideo();
+  document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
   if (id !== 'list') stopViewingRefresh();
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   const screen = document.getElementById('screen-' + id);
   if (screen) {
     screen.classList.add('active');
-    screenHistory.push(id);
+    if (screenHistory.at(-1) !== id) screenHistory.push(id);
     if (screenHistory.length > 20) screenHistory.shift();
   }
-  lucide.createIcons();
+  refreshIcons();
   if (id === 'home') renderHome();
   if (id === 'search') runSearch();
   if (id === 'messages') renderConversations();
   if (id === 'notifications') renderNotifications();
   if (id === 'support-chat') renderSupportMessages();
-  if (id === 'profile') updateProfileCounts();
+  if (id === 'profile') updateProfileUI();
   if (id === 'map') renderMap();
-  if (id === 'add') {
-    photoUrls = [];
-    photoFiles = [];
-    videoFile = null;
-    const imageInput = document.getElementById('property-image-input');
-    const videoInput = document.getElementById('property-video-input');
-    if (imageInput) imageInput.value = '';
-    if (videoInput) videoInput.value = '';
-    document.getElementById('photo-previews').innerHTML = '';
-  }
+  if (id === 'add') renderPhotoPreviews();
+  updateBottomNav(id);
+  enhanceAccessibility();
 }
 
 function goBack() {
@@ -3250,6 +3024,7 @@ function goBack() {
 }
 
 function enterApp() {
+  writeStorage('nf_welcomed', true);
   showScreen('home');
 }
 
@@ -3275,11 +3050,14 @@ function updateBottomNav(active) {
 
 // ==================== HOME ====================
 function renderHome() {
-  const featured = allProperties.filter(p => p.featured || p.type === 'rent').slice(0, 6);
-  const near = allProperties.slice(0, 5);
-  document.getElementById('featured-properties').innerHTML = featured.map(p => propCardHTML(p)).join('');
-  document.getElementById('near-properties').innerHTML = near.map(p => propCardHTML(p)).join('');
-  lucide.createIcons();
+  const activeCategory = document.querySelector('#home-categories .cat-item.active')?.dataset.cat || 'all';
+  const available = allProperties.filter(p => activeCategory === 'all' || p.type === activeCategory);
+  const featured = [...available].sort((a,b) => Number(b.featured) - Number(a.featured)).slice(0, 6);
+  const empty = '<div class="empty-state"><p>' + (catalogState === 'loading' ? 'Loading properties…' : catalogState === 'error' ? 'We could not load properties. Please try again.' : 'No properties listed yet. Be the first to add one.') + '</p>' + (catalogState === 'error' ? '<button class="btn-outline" onclick="loadSupabaseProperties()">Try again</button>' : '') + '</div>';
+  document.getElementById('featured-properties').innerHTML = featured.length ? featured.map(propCardHTML).join('') : empty;
+  document.getElementById('near-properties').innerHTML = available.slice(0, 5).map(propCardHTML).join('');
+  refreshIcons();
+  enhanceAccessibility();
 }
 
 function propCardHTML(p) {
@@ -3287,17 +3065,17 @@ function propCardHTML(p) {
   const badgeClass = p.type === 'buy' ? 'badge sale' : 'badge';
   const badgeText = p.type === 'buy' ? 'For Sale' : p.type === 'hotel' ? 'Hotel' : p.type === 'shop' ? 'Shop' : p.type === 'room' ? 'Room' : 'For Rent';
   return `
-    <div class="prop-card" onclick='openProperty(${JSON.stringify(String(p.id))})'>
+    <div class="prop-card" onclick='openProperty(${idArgument(p.id)})'>
       <div class="prop-card-img">
-        <img src="${p.image}" alt="${p.title}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=400&q=60'">
+        <img src="${escapeHtml(safeImage(p.image))}" alt="${escapeHtml(p.title)}" loading="lazy" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=400&q=60'">
         <span class="${badgeClass}">${badgeText}</span>
-        <button class="fav-btn ${isFav ? 'active' : ''}" onclick="event.stopPropagation(); toggleFavorite(${JSON.stringify(String(p.id))}, this)">
+        <button class="fav-btn ${isFav ? 'active' : ''}" onclick="event.stopPropagation(); toggleFavorite(${idArgument(p.id)}, this)">
           <i data-lucide="heart" ${isFav ? 'fill="currentColor"' : ''}></i>
         </button>
       </div>
       <div class="prop-card-body">
-        <div class="prop-card-title">${p.title}</div>
-        <div class="prop-card-loc"><i data-lucide="map-pin"></i> ${p.location}</div>
+        <div class="prop-card-title">${escapeHtml(p.title)}</div>
+        <div class="prop-card-loc"><i data-lucide="map-pin"></i> ${escapeHtml(p.location)}</div>
         <div class="prop-card-price">${formatPrice(p.price, p.period)}</div>
         <div class="prop-card-meta">
           ${p.beds ? `<span><i data-lucide="bed"></i> ${p.beds}</span>` : ''}
@@ -3312,19 +3090,19 @@ function propListHTML(p) {
   const isFav = favorites.includes(p.id);
   const badgeText = p.type === 'buy' ? 'For Sale' : p.type === 'hotel' ? 'Hotel' : p.type === 'shop' ? 'Shop' : p.type === 'room' ? 'Room' : 'For Rent';
   return `
-    <div class="prop-list-card" onclick='openProperty(${JSON.stringify(String(p.id))})'>
+    <div class="prop-list-card" onclick='openProperty(${idArgument(p.id)})'>
       <div class="prop-list-img">
-        <img src="${p.image}" alt="${p.title}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=400&q=60'">
+        <img src="${escapeHtml(safeImage(p.image))}" alt="${escapeHtml(p.title)}" loading="lazy" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=400&q=60'">
         <span class="badge" style="font-size:10px;padding:2px 6px">${badgeText}</span>
       </div>
       <div class="prop-list-body">
         <div class="prop-list-top">
-          <div class="prop-list-title">${p.title}</div>
-          <button class="prop-list-fav ${isFav ? 'active' : ''}" onclick="event.stopPropagation(); toggleFavorite(${JSON.stringify(String(p.id))}, this)">
+          <div class="prop-list-title">${escapeHtml(p.title)}</div>
+          <button class="prop-list-fav ${isFav ? 'active' : ''}" onclick="event.stopPropagation(); toggleFavorite(${idArgument(p.id)}, this)">
             <i data-lucide="heart" ${isFav ? 'fill="currentColor"' : ''}></i>
           </button>
         </div>
-        <div class="prop-list-loc">${p.location}</div>
+        <div class="prop-list-loc">${escapeHtml(p.location)}</div>
         <div class="prop-list-price">${formatPrice(p.price, p.period)}</div>
         <div class="prop-list-meta">
           ${p.beds ? `<span><i data-lucide="bed"></i> ${p.beds}</span>` : ''}
@@ -3339,14 +3117,7 @@ function propListHTML(p) {
 function filterByCategory(cat, el) {
   document.querySelectorAll('#home-categories .cat-item').forEach(c => c.classList.remove('active'));
   el.classList.add('active');
-  if (cat === 'all') {
-    renderHome();
-  } else {
-    const filtered = allProperties.filter(p => p.type === cat);
-    document.getElementById('featured-properties').innerHTML = filtered.length ? filtered.map(p => propCardHTML(p)).join('') : '<div class="empty-state"><p>No properties in this category</p></div>';
-    document.getElementById('near-properties').innerHTML = '';
-    lucide.createIcons();
-  }
+  renderHome();
 }
 
 // ==================== SEARCH ====================
@@ -3370,6 +3141,7 @@ function runSearch() {
       (p.description || '').toLowerCase().includes(q)
     );
   }
+  results = filterProperties(results, searchFilters);
   // Sort
   if (searchSort === 'price-asc') results.sort((a, b) => a.price - b.price);
   else if (searchSort === 'price-desc') results.sort((a, b) => b.price - a.price);
@@ -3382,12 +3154,12 @@ function runSearch() {
   } else {
     container.innerHTML = '<div class="prop-list">' + results.map(p => propListHTML(p)).join('') + '</div>';
   }
-  lucide.createIcons();
+  refreshIcons();
 }
 
 function cycleSort() {
-  document.getElementById('sort-modal').classList.add('active');
-  lucide.createIcons();
+  openDialog('sort-modal');
+  refreshIcons();
 }
 
 function applySort(sort) {
@@ -3398,8 +3170,8 @@ function applySort(sort) {
   runSearch();
 }
 
-function togglePriceFilter() { toast('Price filter: Use sort for now'); }
-function toggleBedFilter() { toast('Bedroom filter coming soon'); }
+function togglePriceFilter() { openFilters(); }
+function toggleBedFilter() { openFilters(); }
 
 // ==================== DETAIL ====================
 function closeDetailVideo() {
@@ -3450,15 +3222,18 @@ function openDetailVideo(videoUrl) {
   });
 
   detailMedia.appendChild(layer);
-  if (window.lucide) lucide.createIcons();
+  if (window.lucide) refreshIcons();
   try { video.load(); } catch (e) {}
 }
 
 function openProperty(id) {
   const p = getProperty(id);
   if (!p) return;
-  currentPropertyId = id;
-  document.getElementById('detail-img').src = p.images?.[0] || p.image;
+  currentPropertyId = p.id;
+  id = p.id;
+  galleryIndex = 0;
+  document.getElementById('detail-img').src = safeImage(p.images?.[0] || p.image);
+  document.getElementById('detail-img').alt = p.title;
   document.getElementById('detail-counter').textContent = `1 / ${p.images?.length || 1}`;
   const detailMedia = document.getElementById('detail-img')?.parentElement;
   if (detailMedia) {
@@ -3486,41 +3261,42 @@ function openProperty(id) {
   const body = document.getElementById('detail-body');
   body.innerHTML = `
     <div class="detail-price">${formatPrice(p.price, p.period)}</div>
-    <div class="detail-title">${p.title}</div>
-    <div class="detail-loc"><i data-lucide="map-pin"></i> ${p.location}</div>
+    <div class="detail-title">${escapeHtml(p.title)}</div>
+    <div class="detail-loc"><i data-lucide="map-pin"></i> ${escapeHtml(p.location)}</div>
     ${p.verified ? '<div class="detail-verified"><i data-lucide="badge-check"></i> Verified Listing</div>' : ''}
     <div class="detail-stats">
       ${p.beds ? `<div class="stat-item"><i data-lucide="bed"></i> ${p.beds} beds</div>` : ''}
       ${p.baths ? `<div class="stat-item"><i data-lucide="bath"></i> ${p.baths} baths</div>` : ''}
       ${p.parking !== undefined ? `<div class="stat-item"><i data-lucide="car"></i> ${p.parking} parking</div>` : ''}
-      <div class="stat-item"><i data-lucide="home"></i> ${p.propType}</div>
+      <div class="stat-item"><i data-lucide="home"></i> ${escapeHtml(p.propType)}</div>
     </div>
     <div class="detail-section">
       <h3>Property Description</h3>
-      <p class="detail-desc" id="detail-desc">${p.description}</p>
+      <p class="detail-desc" id="detail-desc">${escapeHtml(p.description)}</p>
       <button class="show-more" onclick="this.previousElementSibling.style.webkitLineClamp='unset'; this.style.display='none'">Show more</button>
     </div>
     <div class="detail-section">
       <h3>Amenities</h3>
       <div class="amenities-grid">
-        ${(p.amenities || []).map(a => `<div class="amenity-item"><i data-lucide="check-circle-2"></i> ${a}</div>`).join('')}
+        ${(p.amenities || []).map(a => `<div class="amenity-item"><i data-lucide="check-circle-2"></i> ${escapeHtml(a)}</div>`).join('')}
       </div>
     </div>
-    <div class="owner-card" onclick='openOwnerProfile(${JSON.stringify(String(p.ownerId || ''))})'>
-      <img class="owner-card-avatar" src="${p.ownerAvatar || 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&q=80'}" alt="Property owner">
+    <div class="owner-card" onclick='openOwnerProfile(${idArgument(p.ownerId || '')})'>
+      <img class="owner-card-avatar" src="${escapeHtml(safeImage(p.ownerAvatar))}" alt="Property owner">
       <div class="owner-card-info">
         <div class="owner-card-name">${escapeHtml(p.owner || 'Property Owner')} ${p.ownerVerified ? '<span class="owner-verified"><i data-lucide="badge-check"></i> Verified</span>' : ''}</div>
         <div class="owner-card-sub">View owner profile · ${p.ownerListingCount || 1} listing${p.ownerListingCount === 1 ? '' : 's'}</div>
       </div>
       <i data-lucide="chevron-right" style="width:18px;color:var(--text-muted)"></i>
     </div>
+    <a class="location-map-link" href="https://www.google.com/maps/search/?api=1&amp;query=${encodeURIComponent(p.location + ", " + p.area)}" target="_blank" rel="noopener noreferrer">View this area on a map ↗</a>
     <div class="safety-notice">
       <strong>Safety first:</strong> NestFind does not collect, hold, or transfer property payments. Never send money before inspecting a property and verifying the owner. Report suspicious listings or users to NestFind.
     </div>
-    <button class="report-btn" type="button" onclick='openPropertyReport(${JSON.stringify(String(p.id))})'><i data-lucide="flag" style="width:14px;height:14px;vertical-align:-2px"></i> Report Property</button>
+    <button class="report-btn" type="button" onclick='openPropertyReport(${idArgument(p.id)})'><i data-lucide="flag" style="width:14px;height:14px;vertical-align:-2px"></i> Report Property</button>
   `;
   showScreen('detail');
-  lucide.createIcons();
+  refreshIcons();
   bindDetailChatButton();
   updateDetailChatButton(p);
 }
@@ -3543,7 +3319,7 @@ function updateDetailChatButton(p) {
     ? '<i data-lucide="building-2"></i> Your Listing'
     : '<i data-lucide="message-circle"></i> Chat with Owner';
   button.classList.toggle('owner-listing-btn', isOwner);
-  if (window.lucide) lucide.createIcons();
+  if (window.lucide) refreshIcons();
 }
 
 async function handleDetailChatClick() {
@@ -3607,7 +3383,7 @@ async function handleDetailChatClick() {
     renderChatMessages();
     showScreen('chat');
 
-    // Enforce the 7-day trial/payment gate after the chat screen is ready.
+    // Enforce the 3-day trial/payment gate after the chat screen is ready.
     if (!(await requireMessageAccess())) {
       return;
     }
@@ -3670,6 +3446,7 @@ async function openChatFromDetail() {
 
 // ==================== FAVORITES ====================
 function toggleFavorite(id, btn) {
+  id = getProperty(id)?.id ?? id;
   const idx = favorites.indexOf(id);
   if (idx >= 0) {
     favorites.splice(idx, 1);
@@ -3681,19 +3458,22 @@ function toggleFavorite(id, btn) {
     toast('Saved to favorites');
   }
   saveState();
-  lucide.createIcons();
+  refreshIcons();
   updateProfileCounts();
+  if (document.getElementById('screen-home').classList.contains('active')) renderHome();
+  if (document.getElementById('screen-search').classList.contains('active')) runSearch();
+  if (document.getElementById('screen-list').classList.contains('active') && document.getElementById('list-title').textContent === 'Saved Properties') showSaved();
 }
 
 // ==================== MAP ====================
 function renderMap() {
   const pins = document.getElementById('map-pins');
   pins.innerHTML = allProperties.filter(p => p.mapX).map(p => `
-    <div class="map-pin ${selectedMapProperty === p.id ? 'selected' : ''}" style="left:${p.mapX}%;top:${p.mapY}%" onclick="selectMapPin(${p.id})">
+    <div class="map-pin ${selectedMapProperty === p.id ? 'selected' : ''}" style="left:${p.mapX}%;top:${p.mapY}%" onclick="selectMapPin(${idArgument(p.id)})">
       <div class="map-pin-inner"><i data-lucide="home"></i></div>
     </div>
   `).join('');
-  lucide.createIcons();
+  refreshIcons();
   if (selectedMapProperty) showMapCard(selectedMapProperty);
 }
 
@@ -3709,11 +3489,11 @@ function showMapCard(id) {
   const card = document.getElementById('map-card');
   const badgeText = p.type === 'buy' ? 'For Sale' : 'For Rent';
   card.innerHTML = `
-    <img src="${p.image}" alt="${p.title}">
+    <img src="${escapeHtml(safeImage(p.image))}" alt="${escapeHtml(p.title)}">
     <div class="map-floating-info">
       <span class="badge">${badgeText}</span>
-      <div class="map-floating-title">${p.title}</div>
-      <div class="map-floating-loc">${p.location}</div>
+      <div class="map-floating-title">${escapeHtml(p.title)}</div>
+      <div class="map-floating-loc">${escapeHtml(p.location)}</div>
       <div class="map-floating-price">${formatPrice(p.price, p.period)}</div>
     </div>
   `;
@@ -3752,12 +3532,11 @@ async function resolveConversationName(conv) {
   if (!supabaseClient || !conv?.otherUserId) return conv?.name || 'NestFind Member';
   try {
     const { data } = await supabaseClient
-      .from('profiles')
-      .select('full_name,email')
+      .from('owner_public_profiles')
+      .select('full_name')
       .eq('id', conv.otherUserId)
       .maybeSingle();
     if (data?.full_name) return data.full_name;
-    if (data?.email) return data.email.split('@')[0];
   } catch (e) {}
   return conv?.name || 'NestFind Member';
 }
@@ -3802,7 +3581,7 @@ function renderNotifications() {
   if (!container) return;
   if (!notifications.length) {
     container.innerHTML = '<div class="empty-state" style="padding:70px 20px"><i data-lucide="bell-off"></i><p>No notifications yet.<br>Messages and viewing updates will appear here.</p></div>';
-    lucide.createIcons();
+    refreshIcons();
     updateNotificationBadge();
     return;
   }
@@ -3823,11 +3602,12 @@ function renderNotifications() {
   container.querySelectorAll('[data-notification-id]').forEach(item => {
     item.addEventListener('click', () => handleNotificationClick(item.getAttribute('data-notification-id')));
   });
-  lucide.createIcons();
+  refreshIcons();
   updateNotificationBadge();
 }
 
 async function loadNotifications() {
+  const requestUserId = currentUser?.id;
   if (!currentUser || !supabaseClient) {
     notifications = [];
     updateNotificationBadge();
@@ -3841,6 +3621,7 @@ async function loadNotifications() {
       .eq('user_id', currentUser.id)
       .order('created_at', { ascending: false })
       .limit(100);
+    if (currentUser?.id !== requestUserId) return;
     if (error) throw error;
     notifications = (data || []).map(row => ({
       ...row,
@@ -3855,36 +3636,30 @@ async function loadNotifications() {
 }
 
 async function markNotificationRead(id) {
-  const key = String(id);
-  const item = notifications.find(n => String(n.id) === key);
-  if (!item || item.read) return;
-  item.read = true;
-  item.is_read = true;
-  saveState();
-  renderNotifications();
-  if (!supabaseClient || !currentUser) return;
+  const item = notifications.find(n => String(n.id) === String(id));
+  if (!item || item.read || !supabaseClient || !currentUser) return;
+  const userId = currentUser.id;
   try {
-    await supabaseClient.from('notifications').update({ is_read: true }).eq('id', id).eq('user_id', currentUser.id);
-  } catch (error) {
-    console.warn('Could not mark notification read:', error);
-  }
+    const { error } = await supabaseClient.from('notifications').update({ is_read: true }).eq('id', id).eq('user_id', userId);
+    if (error) throw error;
+    if (currentUser?.id !== userId) return;
+    item.read = true; item.is_read = true;
+    renderNotifications();
+  } catch (error) { toast('Could not mark notification as read. Please try again.'); }
 }
 
 async function markAllNotificationsRead() {
-  const unread = notifications.filter(n => !n.read);
-  if (!unread.length) { toast('All notifications are already read.'); return; }
-  notifications.forEach(n => { n.read = true; n.is_read = true; });
-  saveState();
-  renderNotifications();
-  if (supabaseClient && currentUser) {
-    try {
-      const { error } = await supabaseClient.from('notifications').update({ is_read: true }).eq('user_id', currentUser.id).eq('is_read', false);
-      if (error) throw error;
-    } catch (error) {
-      console.warn('Could not mark all notifications read:', error);
-    }
-  }
-  toast('All notifications marked as read.');
+  if (!supabaseClient || !currentUser) return;
+  if (!notifications.some(n => !n.read)) { toast('All notifications are already read.'); return; }
+  const userId = currentUser.id;
+  try {
+    const { error } = await supabaseClient.from('notifications').update({ is_read: true }).eq('user_id', userId).eq('is_read', false);
+    if (error) throw error;
+    if (currentUser?.id !== userId) return;
+    notifications.forEach(n => { n.read = true; n.is_read = true; });
+    renderNotifications();
+    toast('All notifications marked as read.');
+  } catch (error) { toast('Could not mark notifications as read. Please try again.'); }
 }
 
 async function handleNotificationClick(id) {
@@ -3931,7 +3706,7 @@ function startRealtimeNotifications() {
       event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}`
     }, payload => {
       const row = payload.new;
-      if (!row?.id) return;
+      if (String(currentUser?.id || '') !== userId || !row?.id) return;
       if (notifications.some(n => String(n.id) === String(row.id))) return;
       notifications.unshift({ ...row, read: !!row.is_read });
       notifications = notifications.slice(0, 100);
@@ -3944,13 +3719,16 @@ function startRealtimeNotifications() {
 }
 
 async function loadRemoteConversations() {
+  const requestUserId = currentUser?.id;
   if (!currentUser || !supabaseClient) return;
 
   try {
     const { data, error } = await supabaseClient
       .from('messages')
       .select('id,sender_id,receiver_id,property_id,content,message,created_at,read_at')
+      .or(`sender_id.eq.${currentUser.id},receiver_id.eq.${currentUser.id}`)
       .order('created_at', { ascending: true });
+    if (currentUser?.id !== requestUserId) return;
     if (error) throw error;
 
     const groups = new Map();
@@ -3960,6 +3738,7 @@ async function loadRemoteConversations() {
       const sender = String(row.sender_id || '');
       const receiver = String(row.receiver_id || '');
       const me = String(currentUser.id);
+      if (sender !== me && receiver !== me) continue;
       const otherUserId = sender === me ? receiver : sender;
       if (!otherUserId || otherUserId === me) continue;
       const key = conversationKey(row.property_id, otherUserId);
@@ -3993,9 +3772,11 @@ async function loadRemoteConversations() {
         conv.avatar = p.ownerAvatar || '';
       }
       conv.name = await resolveConversationName(conv);
+    if (currentUser?.id !== requestUserId) return;
       conv.messages = conv.messages || [];
     }
 
+    if (currentUser?.id !== requestUserId) return;
     conversations = remote;
     for (const conv of conversations) {
       chatMessages[conv.id] = conv.messages.map(m => ({
@@ -4023,11 +3804,11 @@ const SUPPORT_WELCOME = {
   createdAt: null
 };
 
-let supportMessages = JSON.parse(localStorage.getItem('nf_support_messages') || 'null') || [SUPPORT_WELCOME];
+let supportMessages = [SUPPORT_WELCOME];
 let supportRealtimeChannel = null;
 
 function saveSupportMessages() {
-  localStorage.setItem('nf_support_messages', JSON.stringify(supportMessages));
+  // Support messages are retrieved from Supabase, never shared through browser storage.
 }
 
 function renderSupportMessages() {
@@ -4043,10 +3824,11 @@ function renderSupportMessages() {
       </div>`).join('');
   }
   container.scrollTop = container.scrollHeight;
-  lucide.createIcons();
+  refreshIcons();
 }
 
 async function loadSupportMessages() {
+  const requestUserId = currentUser?.id;
   if (!currentUser || !supabaseClient) {
     renderSupportMessages();
     return;
@@ -4057,6 +3839,7 @@ async function loadSupportMessages() {
       .select('id,user_id,sender_type,content,created_at')
       .eq('user_id', currentUser.id)
       .order('created_at', { ascending: true });
+    if (currentUser?.id !== requestUserId) return;
     if (error) throw error;
     const rows = data || [];
     if (rows.length) {
@@ -4138,7 +3921,7 @@ function startRealtimeSupport() {
       filter: `user_id=eq.${userId}`
     }, payload => {
       const row = payload.new;
-      if (!row || String(row.user_id) !== userId) return;
+      if (!row || String(row.user_id) !== userId || String(currentUser?.id || '') !== userId) return;
       if (supportMessages.some(m => String(m.id) === String(row.id))) return;
       supportMessages.push({
         id: row.id,
@@ -4173,6 +3956,7 @@ async function openSupportChat() {
 }
 
 async function loadRemoteMessagesForConversation(conv) {
+  const requestUserId = currentUser?.id;
   if (!currentUser || !supabaseClient || !conv?.propertyId || !conv?.otherUserId) return;
   try {
     const me = String(currentUser.id);
@@ -4183,6 +3967,7 @@ async function loadRemoteMessagesForConversation(conv) {
       .eq('property_id', conv.propertyId)
       .or(`and(sender_id.eq.${me},receiver_id.eq.${other}),and(sender_id.eq.${other},receiver_id.eq.${me})`)
       .order('created_at', { ascending: true });
+    if (currentUser?.id !== requestUserId) return;
     if (error) throw error;
 
     const rows = data || [];
@@ -4200,6 +3985,7 @@ async function loadRemoteMessagesForConversation(conv) {
       conv.time = formatChatTime(last.created_at);
     }
     conv.name = await resolveConversationName(conv);
+    if (currentUser?.id !== requestUserId) return;
     const p = getConversationProperty(conv);
     if (p) {
       conv.property = `${p.title} - ${p.area || p.location || ''}`;
@@ -4250,7 +4036,7 @@ function renderConversations() {
   container.querySelectorAll('[data-conversation-id]').forEach(item => {
     item.addEventListener('click', () => openChat(item.getAttribute('data-conversation-id')));
   });
-  lucide.createIcons();
+  refreshIcons();
 }
 
 function filterConversations() { renderConversations(); }
@@ -4300,7 +4086,7 @@ function renderChatMessages() {
     `).join('');
   }
   container.scrollTop = container.scrollHeight;
-  lucide.createIcons();
+  refreshIcons();
 }
 
 async function sendMessage() {
@@ -4309,6 +4095,7 @@ async function sendMessage() {
   const input = document.getElementById('chat-input');
   const text = input.value.trim();
   if (!text) return;
+  if (text.length > 5000) { toast('Messages must be 5,000 characters or fewer.'); return; }
 
   const conv = conversations.find(c => String(c.id) === String(currentChatId));
   if (!conv?.propertyId || !conv?.otherUserId) {
@@ -4316,6 +4103,8 @@ async function sendMessage() {
     return;
   }
 
+  const sentConversationId = conv.id;
+  const sentUserId = currentUser.id;
   const sendButton = document.querySelector('.chat-send');
   if (sendButton) sendButton.disabled = true;
   input.disabled = true;
@@ -4332,6 +4121,7 @@ async function sendMessage() {
       })
       .select('id,sender_id,receiver_id,property_id,content,message,created_at,read_at')
       .single();
+    if (currentUser?.id !== sentUserId) return;
     if (error) throw error;
 
     input.value = '';
@@ -4342,8 +4132,8 @@ async function sendMessage() {
       time: formatChatTime(data.created_at),
       createdAt: data.created_at
     };
-    if (!chatMessages[currentChatId]) chatMessages[currentChatId] = [];
-    chatMessages[currentChatId].push(message);
+    if (!chatMessages[sentConversationId]) chatMessages[sentConversationId] = [];
+    chatMessages[sentConversationId].push(message);
     conv.lastMessage = String(data.content ?? data.message ?? text);
     conv.time = formatChatTime(data.created_at);
     conv.unread = false;
@@ -4383,7 +4173,9 @@ function startRealtimeMessages() {
       filter: `receiver_id=eq.${userId}`
     }, async (payload) => {
       const row = payload.new;
-      if (!row?.property_id || !row?.content) return;
+      if (String(currentUser?.id || '') !== userId) return;
+      const rowText = String(row?.content ?? row?.message ?? '').trim();
+      if (!row?.property_id || !rowText) return;
 
       const convId = conversationKey(row.property_id, row.sender_id);
       let conv = conversations.find(c => String(c.id) === convId);
@@ -4404,6 +4196,7 @@ function startRealtimeMessages() {
       }
 
       conv.name = await resolveConversationName(conv);
+      if (String(currentUser?.id || '') !== userId) return;
       const p = getConversationProperty(conv);
       if (p) {
         conv.property = `${p.title} - ${p.area || p.location || ''}`;
@@ -4449,6 +4242,8 @@ function addPhotoPreview() {
   const input = document.getElementById('add-photo-url');
   const url = input.value.trim();
   if (!url) { toast('Paste an image URL first'); return; }
+  if (!isHttpsUrl(url)) { toast('Use a valid HTTPS image link.'); return; }
+  if (photoUrls.includes(url)) { toast('This photo is already added.'); return; }
   photoUrls.push(url);
   input.value = '';
   renderPhotoPreviews();
@@ -4836,11 +4631,14 @@ async function publishListing() {
   const period = periodForType(selectedListingType());
   const phone = document.getElementById('add-phone').value.trim();
 
-  if (!title || !description || !location || !price) {
-    toast('Complete the required property fields.');
+  if (title.length < 3 || description.length < 10 || location.length < 2 || city.length < 2 || !Number.isFinite(price) || price <= 0 || [beds,baths,parking].some(n => !Number.isInteger(n) || n < 0)) {
+    toast('Add a title (3+ characters), description (10+ characters), location and positive price. Room counts must be whole numbers.');
+    document.querySelectorAll('#screen-add .form-section').forEach(el => el.classList.add('open'));
     return;
   }
 
+  if (photoFiles.length + photoUrls.length > 20) { toast('Use no more than 20 property photos.'); return; }
+  if (!photoFiles.length && !photoUrls.length) { toast('Add at least one real property photo.'); document.getElementById('sec-photos').classList.add('open'); return; }
   pendingListingPayload = {
     owner_id: currentUser.id,
     title,
@@ -4856,7 +4654,7 @@ async function publishListing() {
     description,
     photos: [],
     video_url: '',
-    amenities: ['Security', 'Water', ...(parking ? ['Parking'] : [])],
+    amenities: parking ? ['Parking'] : [],
     is_verified: false,
     is_featured: false,
     status: 'active',
@@ -4866,7 +4664,7 @@ async function publishListing() {
   const paymentTitle = document.getElementById('listing-payment-title');
   if (paymentTitle) paymentTitle.textContent = title;
   document.getElementById('listing-payment-modal')?.classList.add('active');
-  lucide.createIcons();
+  refreshIcons();
 }
 
 async function publishListingAfterPayment(reference) {
@@ -4888,9 +4686,8 @@ async function publishListingAfterPayment(reference) {
 
     toast(videoFile ? 'Payment verified. Uploading property media…' : 'Payment verified. Publishing property…');
     const { uploadedPhotos, uploadedVideo } = await uploadSelectedMedia();
-    const fallbackImage = 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&q=80';
     listing.photos = [...uploadedPhotos, ...photoUrls];
-    if (!listing.photos.length) listing.photos = [fallbackImage];
+    if (!listing.photos.length) throw new Error('Add at least one real property photo.');
     listing.video_url = uploadedVideo || '';
 
     const { data, error } = await supabaseClient.rpc('publish_property_with_payment', {
@@ -4902,16 +4699,18 @@ async function publishListingAfterPayment(reference) {
     const row = data || listing;
     const local = dbPropertyToApp(row);
     userListings.unshift(local);
-    allProperties = [...PROPERTIES, ...userListings];
+    allProperties = [...userListings];
     saveState();
     renderHome();
     pendingListingPayload = null;
     toast('Payment confirmed. Property published successfully.');
     resetListingForm();
     showScreen('profile');
+    return true;
   } catch (err) {
     console.error('NestFind publish error:', err);
-    toast('Payment was successful, but the property could not be published: ' + (err.message || 'Database error'));
+    toast('Your payment is saved. Fix the listing and retry without paying again: ' + (err.message || 'Database error'));
+    return false;
   } finally {
     if (button) { button.disabled = false; button.textContent = 'Publish Listing'; }
   }
@@ -4941,10 +4740,10 @@ function updateProfileCounts() {
   updateNotificationBadge();
   loadMessageAccessStatus().then(() => {
     const msgEl = document.getElementById('count-messages');
-    if (msgEl) msgEl.textContent = messageAccessUntil > Date.now() ? (messageAccessUntil === Number.POSITIVE_INFINITY ? 'Messaging active · Permanent' : `Messaging active · ${formatAccessRemaining(messageAccessUntil)} left`) : '7-day free trial · ₦2,000 one-time after trial';
+    if (msgEl) msgEl.textContent = messageAccessUntil > Date.now() ? (messageAccessUntil === Number.POSITIVE_INFINITY ? 'Messaging active · Permanent' : `Messaging active · ${formatAccessRemaining(messageAccessUntil)} left`) : '3-day free trial · ₦2,000 one-time after trial';
   });
   updateMembershipBadge();
-  const own = currentUser ? allProperties.filter(p => String(p.ownerId || '') === String(currentUser.id)).length : userListings.length;
+  const own = currentUser ? allProperties.filter(p => String(p.ownerId || '') === String(currentUser.id)).length : 0;
   const saved = favorites.length;
   const unread = conversations.filter(c => c.unread).length;
   const upcoming = viewings.filter(v => !v.status || v.status === 'Requested').length;
@@ -4959,22 +4758,23 @@ function updateProfileCounts() {
 }
 
 function updateProfileUI() {
-  const name = currentUser?.user_metadata?.full_name || 'NestFind Member';
+  updatePaymentRecovery();
+  const name = currentUser?.user_metadata?.full_name || (currentUser ? 'NestFind Member' : 'Guest');
   const email = currentUser?.email || 'Sign in to manage your account';
   const avatar = document.getElementById('profile-avatar');
   const nameEl = document.getElementById('profile-name');
   const emailEl = document.getElementById('profile-email');
   if (nameEl) nameEl.textContent = name;
   if (emailEl) emailEl.textContent = email;
-  if (avatar && currentUser && !currentUser.user_metadata?.avatar_url) {
-    const letter = encodeURIComponent(name.charAt(0).toUpperCase());
-    avatar.src = `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="%23E8F5F0" width="100" height="100"/><text x="50" y="62" text-anchor="middle" fill="%230B6E4F" font-size="42">${letter}</text></svg>`;
+  if (avatar) {
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="#E8F5F0" width="100" height="100"/><text x="50" y="62" text-anchor="middle" fill="#0B6E4F" font-size="42">' + escapeHtml(name.charAt(0).toUpperCase()) + '</text></svg>';
+    avatar.src = 'data:image/svg+xml,' + encodeURIComponent(svg);
   }
   updateProfileCounts();
 }
 
 function showMyListings() {
-  const mine = allProperties.filter(p => currentUser ? String(p.ownerId || '') === String(currentUser.id) : userListings.includes(p));
+  const mine = allProperties.filter(p => currentUser && String(p.ownerId || '') === String(currentUser.id));
   document.getElementById('list-title').textContent = 'My Listings';
   document.getElementById('list-content').innerHTML = mine.length
     ? mine.map(propListHTML).join('')
@@ -4992,18 +4792,21 @@ function showSaved() {
 }
 
 async function syncAuthenticatedUser() {
-  if (!supabaseClient) return currentUser;
+  if (!supabaseClient) { currentUser = null; loadAccountState(); return null; }
   try {
     const { data, error } = await supabaseClient.auth.getUser();
     if (error) throw error;
     currentUser = data?.user || null;
     if (currentUser) {
-      localStorage.setItem('nf_user', JSON.stringify(currentUser));
+      loadAccountState();
       await loadCurrentUserData();
     } else {
-      localStorage.removeItem('nf_user');
+      loadAccountState();
+      removeStorage('nf_user');
     }
   } catch (error) {
+    currentUser = null;
+    loadAccountState();
     console.warn('Could not sync authenticated user:', error);
   }
   updateProfileUI();
@@ -5034,7 +4837,7 @@ function renderViewingSchedule() {
   if (!container) return;
   if (!viewings.length) {
     container.innerHTML = '<div class="empty-state"><i data-lucide="calendar"></i><p>No viewing requests yet.</p></div>';
-    lucide.createIcons();
+    refreshIcons();
     return;
   }
 
@@ -5071,7 +4874,7 @@ function renderViewingSchedule() {
     </div>`;
   }).join('');
 
-  lucide.createIcons();
+  refreshIcons();
 
   // Use event listeners instead of inline onclick handlers for the owner controls.
   // This makes the buttons reliable even after the schedule is re-rendered.
@@ -5090,6 +4893,7 @@ function renderViewingSchedule() {
 }
 
 async function loadViewingRequests() {
+  const requestUserId = currentUser?.id;
   if (!currentUser || !supabaseClient) {
     viewings = [];
     return;
@@ -5099,9 +4903,11 @@ async function loadViewingRequests() {
     const { data, error } = await supabaseClient
       .from('viewing_requests')
       .select('id,property_id,requester_id,owner_id,viewing_date,viewing_time,status,notes,created_at')
+      .or(`requester_id.eq.${currentUser.id},owner_id.eq.${currentUser.id}`)
       .order('viewing_date', { ascending: true })
       .order('viewing_time', { ascending: true });
 
+    if (currentUser?.id !== requestUserId) return;
     if (error) throw error;
 
     viewings = (data || []).map(row => {
@@ -5234,7 +5040,7 @@ async function showViewings() {
   document.getElementById('list-title').textContent = 'Viewing Schedule';
   document.getElementById('list-content').innerHTML = '<div class="empty-state"><i data-lucide="loader-circle"></i><p>Loading viewing requests...</p></div>';
   showScreen('list');
-  lucide.createIcons();
+  refreshIcons();
   await loadSupabaseProperties();
   await loadViewingRequests();
   renderViewingSchedule();
@@ -5247,12 +5053,12 @@ function openScheduleModal() {
   const d = new Date();
   d.setDate(d.getDate() + 1);
   const dateEl = document.getElementById('viewing-date');
-  dateEl.min = d.toISOString().slice(0,10);
-  dateEl.value = d.toISOString().slice(0,10);
+  dateEl.min = localDate(d);
+  dateEl.value = localDate(d);
   document.getElementById('viewing-time').value = '14:00';
   document.getElementById('viewing-message').value = '';
-  document.getElementById('schedule-modal').classList.add('active');
-  lucide.createIcons();
+  openDialog('schedule-modal');
+  refreshIcons();
 }
 
 async function submitViewing() {
@@ -5263,7 +5069,7 @@ async function submitViewing() {
   const date = document.getElementById('viewing-date').value;
   const time = document.getElementById('viewing-time').value;
   const message = document.getElementById('viewing-message').value.trim();
-  if (!date || !time) { toast('Choose a date and time.'); return; }
+  if (!isFutureViewing(date, time)) { toast('Choose a future date and time.'); return; }
   if (!p.id || !p.ownerId) { toast('This property is missing owner information.'); return; }
   if (String(p.ownerId) === String(currentUser.id)) { toast('You cannot request a viewing for your own property.'); return; }
   const duplicate = viewings.some(v => String(v.propertyId) === String(p.id) && String(v.requesterId || '') === String(currentUser.id) && String(v.date) === String(date) && String(v.time).slice(0,5) === String(time).slice(0,5) && !['Declined','Cancelled'].includes(String(v.status)));
@@ -5289,7 +5095,7 @@ async function submitViewing() {
   }
 }
 
-function closeModal(id) { document.getElementById(id)?.classList.remove('active'); }
+function closeModal(id) { document.getElementById(id)?.classList.remove('active'); modalReturnFocus?.focus(); }
 
 // ==================== AUTH / SUPABASE ====================
 const SUPABASE_URL = 'https://rjpzolccephzpbbqrbwq.supabase.co';
@@ -5308,6 +5114,9 @@ function escapeHtml(value) {
 
 function switchAuthTab(mode) {
   authMode = mode;
+  document.getElementById('auth-password').autocomplete = mode === 'signup' ? 'new-password' : 'current-password';
+  document.getElementById('auth-password').required = true;
+  document.getElementById('auth-name').required = mode === 'signup';
   pendingSignup = null;
   document.getElementById('tab-signin').classList.toggle('active', mode === 'signin');
   document.getElementById('tab-signup').classList.toggle('active', mode === 'signup');
@@ -5325,6 +5134,8 @@ function switchAuthTab(mode) {
 }
 
 function showOtpStep(email) {
+  document.getElementById('auth-password').required = false;
+  document.getElementById('auth-name').required = false;
   authMode = 'verify-otp';
   document.getElementById('tab-signin').classList.remove('active');
   document.getElementById('tab-signup').classList.add('active');
@@ -5482,7 +5293,7 @@ async function handleAuth(event) {
       const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
       if (error) throw error;
       currentUser = data.user;
-      localStorage.setItem('nf_user', JSON.stringify(currentUser));
+      loadAccountState();
       await loadCurrentUserData();
       showAuthSuccess('Signed in successfully.');
       setTimeout(() => showScreen('home'), 250);
@@ -5494,7 +5305,16 @@ async function handleAuth(event) {
       });
       if (error) throw error;
       if (!data.user) throw new Error('Account could not be created.');
-      pendingSignup = { email, password, name, userId: data.user.id };
+      pendingSignup = { email, name, userId: data.user.id };
+      if (data.session?.user) {
+        currentUser = data.session.user;
+        loadAccountState();
+        await loadCurrentUserData();
+        showAuthSuccess('Account created successfully.');
+        showScreen('home');
+        pendingSignup = null;
+        return;
+      }
       showOtpStep(email);
     } else if (authMode === 'verify-otp') {
       if (!/^\d{6}$/.test(otp)) throw new Error('Enter all 6 digits from your email.');
@@ -5502,7 +5322,7 @@ async function handleAuth(event) {
       const { data, error } = await supabaseClient.auth.verifyOtp({ email: pendingSignup.email, token: otp, type: 'email' });
       if (error) throw error;
       currentUser = data.user;
-      localStorage.setItem('nf_user', JSON.stringify(currentUser));
+      loadAccountState();
       const { error: profileError } = await supabaseClient.from('profiles').upsert({
         id: currentUser.id,
         full_name: pendingSignup.name || currentUser.email?.split('@')[0] || 'NestFind Member',
@@ -5527,9 +5347,10 @@ async function handleAuth(event) {
 }
 
 async function handleLogout() {
-  if (supabaseClient) await supabaseClient.auth.signOut();
+  if (supabaseClient) { const { error } = await supabaseClient.auth.signOut(); if (error) { toast('Sign-out failed. Please try again.'); return; } }
   currentUser = null;
-  localStorage.removeItem('nf_user');
+  loadAccountState();
+  removeStorage('nf_user');
   updateProfileUI();
   toast('Signed out.');
   showScreen('home');
@@ -5549,7 +5370,7 @@ function dbPropertyToApp(row) {
     location: row.location || row.city || 'Lagos, Nigeria',
     area: row.city || row.location || 'Lagos',
     price: Number(row.price || 0),
-    period: periodMap[row.price_period] || 'year',
+    period: type === 'buy' ? 'sale' : periodMap[row.price_period] || (type === 'hotel' ? 'night' : 'year'),
     type,
     propType: row.property_type || 'Property',
     beds: Number(row.bedrooms || 0),
@@ -5575,32 +5396,37 @@ function dbPropertyToApp(row) {
 }
 
 async function loadPremiumStatus() {
+  const requestUserId = currentUser?.id;
   if (!currentUser || !supabaseClient) { updateMembershipBadge(); return; }
   try {
     const { data, error } = await supabaseClient
-      .from('subscriptions')
+      .from('nf_payment_receipts')
       .select('expires_at')
-      .eq('status', 'active')
+      .eq('user_id', requestUserId)
+      .eq('purpose', 'premium')
       .gt('expires_at', new Date().toISOString())
       .order('expires_at', { ascending: false })
       .limit(1)
       .maybeSingle();
+    if (currentUser?.id !== requestUserId) return;
     if (!error && data?.expires_at) {
-      localStorage.setItem('nf_premium_until', String(new Date(data.expires_at).getTime()));
-    } else if (!error) {
-      localStorage.removeItem('nf_premium_until');
+      premiumUntil = new Date(data.expires_at).getTime();
+    } else {
+      premiumUntil = 0;
     }
-  } catch (e) { console.warn('Could not load premium status:', e); }
+  } catch (e) { if (currentUser?.id === requestUserId) premiumUntil = 0; console.warn('Could not load premium status:', e); }
   updateMembershipBadge();
 }
 
 async function loadCurrentUserData() {
+  const requestUserId = currentUser?.id;
   if (!currentUser || !supabaseClient) return;
   try {
     const { data } = await supabaseClient.from('profiles').select('*').eq('id', currentUser.id).maybeSingle();
+    if (currentUser?.id !== requestUserId) return;
     if (data) {
       currentUser = { ...currentUser, user_metadata: { ...currentUser.user_metadata, full_name: data.full_name || currentUser.user_metadata?.full_name } };
-      localStorage.setItem('nf_user', JSON.stringify(currentUser));
+      loadAccountState();
     }
   } catch (e) { console.warn(e); }
   updateProfileUI();
@@ -5659,9 +5485,9 @@ async function openOwnerProfile(ownerId) {
         <div class="trust-check"><i data-lucide="check-circle-2"></i><span>Keep conversations and viewing arrangements inside NestFind when possible.</span></div>
         <div class="trust-check"><i data-lucide="check-circle-2"></i><span>Report requests for OTPs, card details, or unusual upfront transfers.</span></div>
       </div>
-      <button class="btn-outline" style="width:100%;margin-top:12px" type="button" onclick='openUserReport(${JSON.stringify(id)})'><i data-lucide="flag"></i> Report this user</button>
+      <button class="btn-outline" style="width:100%;margin-top:12px" type="button" onclick='openUserReport(${idArgument(id)})'><i data-lucide="flag"></i> Report this user</button>
     `;
-    lucide.createIcons();
+    refreshIcons();
   } catch (error) {
     console.error('Owner profile error:', error);
     toast(error?.message || 'Could not load owner profile.');
@@ -5676,7 +5502,7 @@ function openPropertyReport(propertyId) {
   document.getElementById('report-target-label').textContent = p.title || 'Selected property';
   document.getElementById('report-modal').classList.add('active');
   resetReportForm();
-  lucide.createIcons();
+  refreshIcons();
 }
 
 function openUserReport(userId) {
@@ -5688,7 +5514,7 @@ function openUserReport(userId) {
   document.getElementById('report-target-label').textContent = profile?.full_name || 'NestFind member';
   document.getElementById('report-modal').classList.add('active');
   resetReportForm();
-  lucide.createIcons();
+  refreshIcons();
 }
 
 function resetReportForm() {
@@ -5738,7 +5564,9 @@ async function submitTrustReport() {
 }
 
 async function loadSupabaseProperties() {
-  if (!supabaseClient) return;
+  if (!supabaseClient) { catalogState = 'error'; renderHome(); return; }
+  catalogState = 'loading';
+  renderHome();
   try {
     const { data, error } = await supabaseClient
       .from('properties')
@@ -5748,78 +5576,51 @@ async function loadSupabaseProperties() {
     if (error) throw error;
     await loadPublicOwnerProfiles((data || []).map(row => row.owner_id));
     const remote = (data || []).map(dbPropertyToApp);
-    const seedIds = new Set(PROPERTIES.map(p => String(p.id)));
-    userListings = remote.filter(p => !seedIds.has(String(p.id)));
-    allProperties = [...PROPERTIES, ...userListings];
+    userListings = remote;
+    catalogState = 'ready';
+    allProperties = [...userListings];
     saveState();
     renderHome();
     if (document.getElementById('screen-search')?.classList.contains('active')) runSearch();
     updateProfileCounts();
   } catch (err) {
+    catalogState = 'error';
+    renderHome();
     console.warn('Could not load properties:', err);
   }
 }
 
 // ==================== INIT ====================
 async function initNestFind() {
-  lucide.createIcons();
+  refreshIcons();
   bindDetailChatButton();
   renderHome();
   renderConversations();
   renderNotifications();
-  updateNotificationBadge();
   updateProfileUI();
-  const { data } = supabaseClient ? await supabaseClient.auth.getSession() : { data:{session:null} };
-  if (data?.session?.user) {
-    currentUser = data.session.user;
-    localStorage.setItem('nf_user', JSON.stringify(currentUser));
-    await loadCurrentUserData();
-  } else {
-    currentUser = JSON.parse(localStorage.getItem('nf_user') || 'null');
-  }
+  const { data } = supabaseClient ? await supabaseClient.auth.getSession() : { data: { session: null } };
+  currentUser = data?.session?.user || null;
+  loadAccountState();
+  updateProfileUI();
   if (supabaseClient) {
-    supabaseClient.auth.onAuthStateChange(async (_event, session) => {
-      stopViewingRefresh();
+    // Keep this callback synchronous: awaiting Supabase here can deadlock its auth lock.
+    supabaseClient.auth.onAuthStateChange((_event, session) => {
+      const previousId = currentUser?.id;
       currentUser = session?.user || null;
-      if (currentUser) {
-        localStorage.setItem('nf_user', JSON.stringify(currentUser));
-        await loadCurrentUserData();
-        await loadSupabaseProperties();
-        await loadViewingRequests();
-        await loadRemoteConversations();
-        await loadNotifications();
-        startRealtimeMessages();
-        startRealtimeNotifications();
-        startRealtimeSupport();
-      } else {
-        localStorage.removeItem('nf_user');
-        viewings = [];
-        conversations = [];
-        chatMessages = {};
-        stopRealtimeMessages();
-        stopRealtimeNotifications();
-        stopRealtimeSupport();
-        notifications = [];
-        saveState();
-      }
+      loadAccountState();
       updateProfileUI();
+      if (previousId !== currentUser?.id) {
+        const userId = currentUser?.id;
+        if (previousId) showScreen('home');
+        setTimeout(() => refreshAccountData(userId), 0);
+      }
     });
-    await loadSupabaseProperties();
   }
-  if (currentUser) {
-    await syncAuthenticatedUser();
-    await loadPremiumStatus();
-    await loadMessageAccessStatus();
-    await loadViewingRequests();
-    await loadRemoteConversations();
-    await loadNotifications();
-    startRealtimeMessages();
-    startRealtimeNotifications();
-    startRealtimeSupport();
-  }
-  lucide.createIcons();
+  await loadSupabaseProperties();
+  if (currentUser) await refreshAccountData(currentUser.id);
+  refreshIcons();
 }
-initNestFind();
 </script>
+<script src="improvements.js"></script>
 </body>
 </html>
