@@ -2,8 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>NestFind – Find your next place</title>
+<meta name="description" content="Discover homes, apartments, shops and short stays with NestFind. Search by location, budget and property type.">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -1671,6 +1673,7 @@ body {
   font-weight: 500;
 }
 </style>
+<link rel="stylesheet" href="improvements.css">
 </head>
 <body>
 <div class="app-shell" id="app">
@@ -1744,12 +1747,12 @@ body {
           <div class="home-brand-icon"><i data-lucide="home"></i></div>
           <div>
             <div class="home-brand-name">NestFind</div>
-            <div class="location-selector" onclick="toast('Location: Lagos, Nigeria')">
+            <div class="location-selector" onclick="showScreen('search'); document.getElementById('search-input').focus()">
               <i data-lucide="map-pin"></i> Lagos, Nigeria <i data-lucide="chevron-down" style="width:14px;height:14px"></i>
             </div>
           </div>
         </div>
-        <button class="icon-btn" onclick="toast('No new notifications')">
+        <button class="icon-btn" onclick="showServiceStatus('Notifications', 'Push and account notifications are not connected yet.')">
           <i data-lucide="bell"></i>
         </button>
       </div>
@@ -1793,13 +1796,13 @@ body {
         </div>
       </div>
       <div class="section-header">
-        <span class="section-title">Featured Properties</span>
+        <span class="section-title">Explore Properties</span>
         <button class="see-all" onclick="showScreen('search')">See all</button>
       </div>
       <div class="property-scroll" id="featured-properties"></div>
       <div class="section-header" style="margin-top:8px">
-        <span class="section-title">Near You</span>
-        <button class="see-all" onclick="showScreen('map')">Map View</button>
+        <span class="section-title">Latest Listings</span>
+        <button class="see-all" onclick="openLocationSearch()">Find an area</button>
       </div>
       <div class="property-scroll" id="near-properties"></div>
     </div>
@@ -1827,7 +1830,7 @@ body {
     <div class="header">
       <button class="header-back" onclick="navTo('home')"><i data-lucide="arrow-left"></i></button>
       <div class="header-title">Search Properties</div>
-      <button class="icon-btn" onclick="toast('Advanced filters coming soon')"><i data-lucide="sliders-horizontal"></i></button>
+      <button class="icon-btn" onclick="openFilters()"><i data-lucide="sliders-horizontal"></i></button>
     </div>
     <div class="search-filters">
       <div class="search-bar" style="margin-bottom:12px">
@@ -1843,9 +1846,9 @@ body {
         <button class="filter-tab" data-type="room" onclick="setSearchType('room', this)">Room</button>
       </div>
       <div class="filter-row">
-        <button class="filter-chip" onclick="togglePriceFilter()"><i data-lucide="naira-sign"></i> Price <i data-lucide="chevron-down"></i></button>
+        <button class="filter-chip" onclick="togglePriceFilter()"><span aria-hidden="true">₦</span> Price <i data-lucide="chevron-down"></i></button>
         <button class="filter-chip" onclick="toggleBedFilter()"><i data-lucide="bed"></i> Bedrooms <i data-lucide="chevron-down"></i></button>
-        <button class="filter-chip" onclick="toast('Property type filter')"><i data-lucide="home"></i> Property Type <i data-lucide="chevron-down"></i></button>
+        <button class="filter-chip" onclick="openFilters()"><i data-lucide="home"></i> Property Type <i data-lucide="chevron-down"></i></button>
       </div>
     </div>
     <div class="results-bar">
@@ -1908,6 +1911,7 @@ body {
       <div class="header-title">Messages</div>
       <div style="width:40px"></div>
     </div>
+    <div class="service-note">Your saved message drafts appear here. They have not been delivered to owners.</div>
     <div class="messages-search">
       <div class="search-bar">
         <i data-lucide="search"></i>
@@ -1934,6 +1938,7 @@ body {
       </div>
       <button class="icon-btn" onclick="openScheduleModal()"><i data-lucide="calendar"></i></button>
     </div>
+    <div class="service-note">Messages here are private drafts on this device. Delivery to owners is not connected yet.</div>
     <div class="chat-property-preview" id="chat-prop-preview" onclick="if(currentChatPropertyId) openProperty(currentChatPropertyId)">
       <img id="chat-prop-img" src="" alt="">
       <div class="chat-property-preview-info">
@@ -1944,7 +1949,7 @@ body {
     </div>
     <div class="chat-messages" id="chat-messages"></div>
     <div class="chat-input-area">
-      <input type="text" class="chat-input" id="chat-input" placeholder="Type a message..." onkeydown="if(event.key==='Enter')sendMessage()">
+      <input type="text" class="chat-input" id="chat-input" aria-label="Message draft" maxlength="4000" placeholder="Write a message draft..." onkeydown="if(event.key==='Enter')sendMessage()">
       <button class="chat-send" onclick="sendMessage()"><i data-lucide="send"></i></button>
     </div>
   </div>
@@ -2052,7 +2057,7 @@ body {
       </div>
       <div class="form-section" id="sec-photos">
         <div class="form-section-header" onclick="toggleSection('sec-photos')">
-          Photos & Video <i data-lucide="chevron-down"></i>
+          Property Photos <i data-lucide="chevron-down"></i>
         </div>
         <div class="form-section-body">
           <div class="form-group">
@@ -2070,12 +2075,7 @@ body {
         <div class="form-section-body">
           <div class="form-group">
             <label>Preferred Contact</label>
-            <select id="add-contact">
-              <option>In-app Chat</option>
-              <option>Phone Call</option>
-              <option>WhatsApp</option>
-              <option>Email</option>
-            </select>
+            <p class="service-note">Owner messaging is not available yet. Contact options will be enabled once delivery is connected.</p>
           </div>
           <div class="form-group">
             <label>Phone (optional)</label>
@@ -2097,14 +2097,14 @@ body {
     <div class="header">
       <div style="width:40px"></div>
       <div class="header-title">My Profile</div>
-      <button class="icon-btn" onclick="toast('Settings')"><i data-lucide="settings"></i></button>
+      <button class="icon-btn" onclick="showScreen('auth')"><i data-lucide="settings"></i></button>
     </div>
     <div class="scroll-content" id="profile-scroll">
       <div class="profile-header-area">
         <img class="profile-avatar" id="profile-avatar" src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&q=80" alt="Profile" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%23E8F5F0%22 width=%22100%22 height=%22100%22/><text x=%2250%22 y=%2255%22 text-anchor=%22middle%22 fill=%22%230B6E4F%22 font-size=%2240%22>E</text></svg>'">
-        <div class="profile-name" id="profile-name">Emma Okoro</div>
-        <div class="profile-email" id="profile-email">emma@gmail.com</div>
-        <div class="premium-badge"><i data-lucide="crown"></i> Premium Member</div>
+        <div class="profile-name" id="profile-name">Guest</div>
+        <div class="profile-email" id="profile-email">Sign in to manage your account</div>
+        <div class="premium-badge" id="membership-label">Guest browsing</div>
       </div>
       <div class="profile-menu">
         <div class="profile-menu-item" onclick="showMyListings()">
@@ -2139,26 +2139,26 @@ body {
           </div>
           <div class="profile-menu-arrow"><i data-lucide="chevron-right"></i></div>
         </div>
-        <div class="profile-menu-item" onclick="toast('Manage your subscription plan')">
+        <div class="profile-menu-item" onclick="showServiceStatus('NestFind membership', 'There is currently no paid subscription service. Browsing and saving properties is free.')">
           <div class="profile-menu-icon"><i data-lucide="credit-card"></i></div>
           <div class="profile-menu-text">
             <div class="profile-menu-title">Subscription</div>
-            <div class="profile-menu-desc">Manage your plan</div>
+            <div class="profile-menu-desc">Free browsing</div>
           </div>
           <div class="profile-menu-arrow"><i data-lucide="chevron-right"></i></div>
         </div>
-        <div class="profile-menu-item" onclick="toast('Help & Support: support@nestfind.ng')">
+        <div class="profile-menu-item" onclick="showServiceStatus('Help & support', 'Search for a location, save properties you like, and inspect every property before paying. Owner messaging and viewing delivery are awaiting database setup.')">
           <div class="profile-menu-icon"><i data-lucide="help-circle"></i></div>
           <div class="profile-menu-text">
             <div class="profile-menu-title">Help & Support</div>
-            <div class="profile-menu-desc">FAQs and contact</div>
+            <div class="profile-menu-desc">Using NestFind safely</div>
           </div>
           <div class="profile-menu-arrow"><i data-lucide="chevron-right"></i></div>
         </div>
-        <div class="profile-menu-item" onclick="handleLogout()">
+        <div class="profile-menu-item" onclick="currentUser ? handleLogout() : showScreen('auth')">
           <div class="profile-menu-icon svg-red"><i data-lucide="log-out"></i></div>
           <div class="profile-menu-text">
-            <div class="profile-menu-title" style="color:#DC2626">Log Out</div>
+            <div class="profile-menu-title" id="account-action-label" style="color:#DC2626">Sign In</div>
             <div class="profile-menu-desc">Sign out of your account</div>
           </div>
           <div class="profile-menu-arrow"><i data-lucide="chevron-right"></i></div>
@@ -2189,7 +2189,7 @@ body {
     <div class="modal-sheet" style="position:relative">
       <div class="modal-handle"></div>
       <button class="modal-close" onclick="closeModal('schedule-modal')"><i data-lucide="x"></i></button>
-      <div class="modal-title">Schedule Viewing</div>
+      <div class="modal-title">Plan a viewing</div><p class="service-note">Save a private reminder. This does not contact the owner or confirm an appointment.</p>
       <div class="form-group">
         <label>Date</label>
         <input type="date" id="viewing-date" min="">
@@ -2202,7 +2202,7 @@ body {
         <label>Message (optional)</label>
         <textarea id="viewing-message" placeholder="I would like to inspect the property."></textarea>
       </div>
-      <button class="btn-primary" style="margin-top:8px" onclick="submitViewing()">Request Viewing</button>
+      <button class="btn-primary" style="margin-top:8px" onclick="submitViewing()">Save Viewing Draft</button>
     </div>
   </div>
 
@@ -2220,244 +2220,17 @@ body {
     </div>
   </div>
 
-  <div class="toast" id="toast"></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 </div>
 
 <script>
-// ==================== DATA ====================
-const PROPERTIES = [
-  {
-    id: 1,
-    title: "3 Bedroom Apartment",
-    location: "Lekki, Lagos",
-    area: "Lekki",
-    price: 3500000,
-    period: "year",
-    type: "rent",
-    propType: "Apartment",
-    beds: 3, baths: 3, parking: 1,
-    verified: true,
-    image: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=600&q=80",
-    images: [
-      "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&q=80",
-      "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=80",
-      "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800&q=80"
-    ],
-    description: "Beautiful 3 bedroom apartment in a secure estate with 24/7 power, good water supply, and close to shops, schools, and malls. Spacious living area, fitted kitchen, and modern finishes throughout.",
-    amenities: ["24/7 Security", "Good Water", "Parking", "Furnished", "24/7 Power", "CCTV"],
-    owner: "Mr. Adewale",
-    ownerAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&q=80",
-    mapX: 58, mapY: 20,
-    featured: true,
-    created: "2026-08-15"
-  },
-  {
-    id: 2,
-    title: "4 Bedroom Duplex",
-    location: "Ajah, Lagos",
-    area: "Ajah",
-    price: 95000000,
-    period: "sale",
-    type: "buy",
-    propType: "Duplex",
-    beds: 4, baths: 4, parking: 2,
-    verified: true,
-    image: "https://images.unsplash.com/photo-1600585154526-990dced4db0d?w=600&q=80",
-    images: ["https://images.unsplash.com/photo-1600585154526-990dced4db0d?w=800&q=80"],
-    description: "Luxury 4 bedroom duplex with BQ in a gated community. Fully detached, modern architecture, swimming pool access, and premium finishes.",
-    amenities: ["24/7 Security", "Swimming Pool", "Parking", "BQ", "Generator"],
-    owner: "Luxury Homes NG",
-    ownerAvatar: "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=100&q=80",
-    mapX: 72, mapY: 24,
-    featured: true,
-    created: "2026-08-20"
-  },
-  {
-    id: 3,
-    title: "2 Bedroom Apartment",
-    location: "Ikoyi, Lagos",
-    area: "Ikoyi",
-    price: 2000000,
-    period: "year",
-    type: "rent",
-    propType: "Apartment",
-    beds: 2, baths: 2, parking: 1,
-    verified: true,
-    image: "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600&q=80",
-    images: ["https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&q=80"],
-    description: "Well-maintained 2 bedroom apartment in the heart of Ikoyi. Close to embassies, restaurants, and business districts. All rooms en-suite.",
-    amenities: ["24/7 Security", "Good Water", "Parking", "Furnished"],
-    owner: "Mr. Collins",
-    ownerAvatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&q=80",
-    mapX: 45, mapY: 30,
-    featured: true,
-    created: "2026-09-01"
-  },
-  {
-    id: 4,
-    title: "Self Contain",
-    location: "Yaba, Lagos",
-    area: "Yaba",
-    price: 600000,
-    period: "year",
-    type: "rent",
-    propType: "Self Contain",
-    beds: 1, baths: 1, parking: 0,
-    verified: true,
-    image: "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=600&q=80",
-    images: ["https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800&q=80"],
-    description: "Clean self-contained apartment ideal for students or young professionals. Walking distance to University of Lagos and Yaba tech hub.",
-    amenities: ["Good Water", "Furnished", "Security"],
-    owner: "Sarah Daniels",
-    ownerAvatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&q=80",
-    mapX: 32, mapY: 44,
-    featured: false,
-    created: "2026-08-28"
-  },
-  {
-    id: 5,
-    title: "3 Bedroom Apartment",
-    location: "Lekki, Lagos",
-    area: "Lekki",
-    price: 3500000,
-    period: "year",
-    type: "rent",
-    propType: "Apartment",
-    beds: 3, baths: 3, parking: 1,
-    verified: true,
-    image: "https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=600&q=80",
-    images: ["https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=800&q=80"],
-    description: "Spacious 3 bedroom flat in a serene estate. Newly renovated with modern fittings, POP ceilings, and ample parking.",
-    amenities: ["24/7 Security", "Good Water", "Parking", "Furnished", "24/7 Power"],
-    owner: "Mr. Adewale",
-    ownerAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&q=80",
-    mapX: 62, mapY: 18,
-    featured: true,
-    created: "2026-09-05"
-  },
-  {
-    id: 6,
-    title: "Shop - Ikeja",
-    location: "Ikeja, Lagos",
-    area: "Ikeja",
-    price: 2500000,
-    period: "year",
-    type: "shop",
-    propType: "Shop",
-    beds: 0, baths: 1, parking: 0,
-    verified: false,
-    image: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=600&q=80",
-    images: ["https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800&q=80"],
-    description: "30sqm shop space in a busy commercial area of Ikeja. High foot traffic, suitable for retail or services. Rent is ₦2.5m yearly.",
-    amenities: ["Security", "Good Location"],
-    owner: "Bright Properties",
-    ownerAvatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&q=80",
-    mapX: 15, mapY: 48,
-    featured: false,
-    created: "2026-08-10"
-  },
-  {
-    id: 7,
-    title: "Hotel Room - Victoria Island",
-    location: "Victoria Island, Lagos",
-    area: "Victoria Island",
-    price: 45000,
-    period: "night",
-    type: "hotel",
-    propType: "Hotel Room",
-    beds: 1, baths: 1, parking: 1,
-    verified: true,
-    image: "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=600&q=80",
-    images: ["https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=800&q=80"],
-    description: "Comfortable hotel room with ocean view on Victoria Island. Includes breakfast, WiFi, and 24-hour room service.",
-    amenities: ["WiFi", "Breakfast", "AC", "Parking", "Room Service"],
-    owner: "Comfort Stay Hotel",
-    ownerAvatar: "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=100&q=80",
-    mapX: 50, mapY: 40,
-    featured: false,
-    created: "2026-09-02"
-  },
-  {
-    id: 8,
-    title: "Studio Room",
-    location: "Surulere, Lagos",
-    area: "Surulere",
-    price: 450000,
-    period: "year",
-    type: "room",
-    propType: "Studio",
-    beds: 1, baths: 1, parking: 0,
-    verified: false,
-    image: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=600&q=80",
-    images: ["https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&q=80"],
-    description: "Affordable studio room in Surulere. Shared kitchen and bathroom facilities. Ideal for students or young workers.",
-    amenities: ["Shared Kitchen", "Security"],
-    owner: "Mrs. Okonkwo",
-    ownerAvatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&q=80",
-    mapX: 22, mapY: 58,
-    featured: false,
-    created: "2026-08-25"
-  },
-  {
-    id: 9,
-    title: "5 Bedroom Mansion",
-    location: "Chevron, Lagos",
-    area: "Chevron",
-    price: 180000000,
-    period: "sale",
-    type: "buy",
-    propType: "Duplex",
-    beds: 5, baths: 6, parking: 4,
-    verified: true,
-    image: "https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=600&q=80",
-    images: ["https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800&q=80"],
-    description: "Stunning 5 bedroom mansion in Chevron. Private swimming pool, cinema room, staff quarters, and smart home features.",
-    amenities: ["Pool", "Cinema", "Smart Home", "24/7 Security", "Generator", "Parking"],
-    owner: "Elite Realty",
-    ownerAvatar: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=100&q=80",
-    mapX: 68, mapY: 28,
-    featured: true,
-    created: "2026-09-08"
-  },
-  {
-    id: 10,
-    title: "2 Bedroom Flat",
-    location: "Ikorodu, Lagos",
-    area: "Ikorodu",
-    price: 800000,
-    period: "year",
-    type: "rent",
-    propType: "Apartment",
-    beds: 2, baths: 2, parking: 1,
-    verified: false,
-    image: "https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=600&q=80",
-    images: ["https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=800&q=80"],
-    description: "Affordable 2 bedroom flat in a quiet part of Ikorodu. Newly painted, tiled floors, and good road access.",
-    amenities: ["Parking", "Security", "Good Water"],
-    owner: "Mr. Bello",
-    ownerAvatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=100&q=80",
-    mapX: 80, mapY: 55,
-    featured: false,
-    created: "2026-08-18"
-  }
-];
-
-const DEFAULT_CONVERSATIONS = [
-  { id: 1, propertyId: 1, name: "Mr. Adewale", avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&q=80", property: "3 Bedroom Apartment - Lekki", lastMessage: "Yes, the house is still available. We can schedule a viewing.", time: "10:24 AM", unread: true },
-  { id: 2, propertyId: 2, name: "Luxury Homes NG", avatar: "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=100&q=80", property: "4 Bedroom Duplex - Ajah", lastMessage: "Good morning! When are you available to view?", time: "9:18 AM", unread: true },
-  { id: 3, propertyId: 4, name: "Sarah Daniels", avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&q=80", property: "Self Contain - Yaba", lastMessage: "Can I schedule a viewing for tomorrow?", time: "Yesterday", unread: false },
-  { id: 4, propertyId: 6, name: "Bright Properties", avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&q=80", property: "Shop - Ikeja", lastMessage: "The shop is 30sqm. Rent is ₦2.5m yearly.", time: "Yesterday", unread: false },
-  { id: 5, propertyId: 3, name: "Mr. Collins", avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&q=80", property: "2 Bedroom Apartment - Ikoyi", lastMessage: "Perfect, see you then.", time: "Mon", unread: false },
-  { id: 6, propertyId: 7, name: "Comfort Stay Hotel", avatar: "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=100&q=80", property: "Hotel Room - Victoria Island", lastMessage: "You're welcome!", time: "Mon", unread: false }
-];
-
 // ==================== STATE ====================
-let currentUser = JSON.parse(localStorage.getItem('nf_user') || 'null');
-let favorites = JSON.parse(localStorage.getItem('nf_favorites') || '[]');
-let conversations = JSON.parse(localStorage.getItem('nf_conversations') || 'null') || DEFAULT_CONVERSATIONS;
-let chatMessages = JSON.parse(localStorage.getItem('nf_chat_messages') || '{}');
-let viewings = JSON.parse(localStorage.getItem('nf_viewings') || '[]');
-let userListings = JSON.parse(localStorage.getItem('nf_listings') || '[]');
+let currentUser = null;
+let favorites = [];
+let conversations = [];
+let chatMessages = {};
+let viewings = [];
+let userListings = [];
 let currentPropertyId = null;
 let currentChatId = null;
 let currentChatPropertyId = null;
@@ -2467,7 +2240,7 @@ let selectedMapProperty = null;
 let photoUrls = [];
 let authMode = 'signin';
 let screenHistory = [];
-let allProperties = [...PROPERTIES, ...userListings];
+let allProperties = [];
 
 // ==================== UTILS ====================
 function formatPrice(price, period) {
@@ -2488,34 +2261,33 @@ function toast(msg) {
 }
 
 function saveState() {
-  localStorage.setItem('nf_favorites', JSON.stringify(favorites));
-  localStorage.setItem('nf_conversations', JSON.stringify(conversations));
-  localStorage.setItem('nf_chat_messages', JSON.stringify(chatMessages));
-  localStorage.setItem('nf_viewings', JSON.stringify(viewings));
-  localStorage.setItem('nf_listings', JSON.stringify(userListings));
-  if (currentUser) localStorage.setItem('nf_user', JSON.stringify(currentUser));
+  writeStorage(accountStorageKey(), { favorites, conversations, chatMessages, viewings });
 }
 
 function getProperty(id) {
-  return allProperties.find(p => p.id === id);
+  return allProperties.find(p => String(p.id) === String(id));
 }
 
 // ==================== NAVIGATION ====================
 function showScreen(id) {
+  if (!document.getElementById('screen-' + id)) return;
+  document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   const screen = document.getElementById('screen-' + id);
   if (screen) {
     screen.classList.add('active');
-    screenHistory.push(id);
+    if (screenHistory.at(-1) !== id) screenHistory.push(id);
     if (screenHistory.length > 20) screenHistory.shift();
   }
-  lucide.createIcons();
+  refreshIcons();
   if (id === 'home') renderHome();
   if (id === 'search') runSearch();
   if (id === 'messages') renderConversations();
-  if (id === 'profile') updateProfileCounts();
+  if (id === 'profile') updateProfileUI();
   if (id === 'map') renderMap();
-  if (id === 'add') { photoUrls = []; document.getElementById('photo-previews').innerHTML = ''; }
+  updateBottomNav(id);
+  if (id === 'add') renderPhotoPreviews();
+  enhanceAccessibility();
 }
 
 function goBack() {
@@ -2529,10 +2301,12 @@ function goBack() {
 }
 
 function enterApp() {
+  writeStorage('nf_welcomed', true);
   showScreen('home');
 }
 
 function navTo(target) {
+  if (target === 'add' && !currentUser) { toast('Sign in to list your property.'); showScreen('auth'); return; }
   if (target === 'home') showScreen('home');
   else if (target === 'search') showScreen('search');
   else if (target === 'add') showScreen('add');
@@ -2549,11 +2323,14 @@ function updateBottomNav(active) {
 
 // ==================== HOME ====================
 function renderHome() {
-  const featured = allProperties.filter(p => p.featured || p.type === 'rent').slice(0, 6);
-  const near = allProperties.slice(0, 5);
-  document.getElementById('featured-properties').innerHTML = featured.map(p => propCardHTML(p)).join('');
-  document.getElementById('near-properties').innerHTML = near.map(p => propCardHTML(p)).join('');
-  lucide.createIcons();
+  const activeCategory = document.querySelector('#home-categories .cat-item.active')?.dataset.cat || 'all';
+  const available = allProperties.filter(p => activeCategory === 'all' || p.type === activeCategory);
+  const featured = [...available].sort((a,b) => Number(b.featured) - Number(a.featured)).slice(0, 6);
+  const empty = '<div class="empty-state"><p>' + (catalogState === 'loading' ? 'Loading properties…' : catalogState === 'error' ? 'We could not load properties. Please try again.' : 'No properties listed yet. Be the first to add one.') + '</p>' + (catalogState === 'error' ? '<button class="btn-outline" onclick="loadSupabaseProperties()">Try again</button>' : '') + '</div>';
+  document.getElementById('featured-properties').innerHTML = featured.length ? featured.map(propCardHTML).join('') : empty;
+  document.getElementById('near-properties').innerHTML = available.slice(0, 5).map(propCardHTML).join('');
+  refreshIcons();
+  enhanceAccessibility();
 }
 
 function propCardHTML(p) {
@@ -2561,17 +2338,17 @@ function propCardHTML(p) {
   const badgeClass = p.type === 'buy' ? 'badge sale' : 'badge';
   const badgeText = p.type === 'buy' ? 'For Sale' : p.type === 'hotel' ? 'Hotel' : p.type === 'shop' ? 'Shop' : p.type === 'room' ? 'Room' : 'For Rent';
   return `
-    <div class="prop-card" onclick="openProperty(${p.id})">
+    <div class="prop-card" onclick="openProperty(${idArgument(p.id)})">
       <div class="prop-card-img">
-        <img src="${p.image}" alt="${p.title}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=400&q=60'">
+        <img src="${escapeHtml(safeImage(p.image))}" alt="${escapeHtml(p.title)}" loading="lazy" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=400&q=60'">
         <span class="${badgeClass}">${badgeText}</span>
-        <button class="fav-btn ${isFav ? 'active' : ''}" onclick="event.stopPropagation(); toggleFavorite(${p.id}, this)">
+        <button class="fav-btn ${isFav ? 'active' : ''}" onclick="event.stopPropagation(); toggleFavorite(${idArgument(p.id)}, this)">
           <i data-lucide="heart" ${isFav ? 'fill="currentColor"' : ''}></i>
         </button>
       </div>
       <div class="prop-card-body">
-        <div class="prop-card-title">${p.title}</div>
-        <div class="prop-card-loc"><i data-lucide="map-pin"></i> ${p.location}</div>
+        <div class="prop-card-title">${escapeHtml(p.title)}</div>
+        <div class="prop-card-loc"><i data-lucide="map-pin"></i> ${escapeHtml(p.location)}</div>
         <div class="prop-card-price">${formatPrice(p.price, p.period)}</div>
         <div class="prop-card-meta">
           ${p.beds ? `<span><i data-lucide="bed"></i> ${p.beds}</span>` : ''}
@@ -2586,19 +2363,19 @@ function propListHTML(p) {
   const isFav = favorites.includes(p.id);
   const badgeText = p.type === 'buy' ? 'For Sale' : p.type === 'hotel' ? 'Hotel' : p.type === 'shop' ? 'Shop' : p.type === 'room' ? 'Room' : 'For Rent';
   return `
-    <div class="prop-list-card" onclick="openProperty(${p.id})">
+    <div class="prop-list-card" onclick="openProperty(${idArgument(p.id)})">
       <div class="prop-list-img">
-        <img src="${p.image}" alt="${p.title}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=400&q=60'">
+        <img src="${escapeHtml(safeImage(p.image))}" alt="${escapeHtml(p.title)}" loading="lazy" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=400&q=60'">
         <span class="badge" style="font-size:10px;padding:2px 6px">${badgeText}</span>
       </div>
       <div class="prop-list-body">
         <div class="prop-list-top">
-          <div class="prop-list-title">${p.title}</div>
-          <button class="prop-list-fav ${isFav ? 'active' : ''}" onclick="event.stopPropagation(); toggleFavorite(${p.id}, this)">
+          <div class="prop-list-title">${escapeHtml(p.title)}</div>
+          <button class="prop-list-fav ${isFav ? 'active' : ''}" onclick="event.stopPropagation(); toggleFavorite(${idArgument(p.id)}, this)">
             <i data-lucide="heart" ${isFav ? 'fill="currentColor"' : ''}></i>
           </button>
         </div>
-        <div class="prop-list-loc">${p.location}</div>
+        <div class="prop-list-loc">${escapeHtml(p.location)}</div>
         <div class="prop-list-price">${formatPrice(p.price, p.period)}</div>
         <div class="prop-list-meta">
           ${p.beds ? `<span><i data-lucide="bed"></i> ${p.beds}</span>` : ''}
@@ -2613,14 +2390,7 @@ function propListHTML(p) {
 function filterByCategory(cat, el) {
   document.querySelectorAll('#home-categories .cat-item').forEach(c => c.classList.remove('active'));
   el.classList.add('active');
-  if (cat === 'all') {
-    renderHome();
-  } else {
-    const filtered = allProperties.filter(p => p.type === cat);
-    document.getElementById('featured-properties').innerHTML = filtered.length ? filtered.map(p => propCardHTML(p)).join('') : '<div class="empty-state"><p>No properties in this category</p></div>';
-    document.getElementById('near-properties').innerHTML = '';
-    lucide.createIcons();
-  }
+  renderHome();
 }
 
 // ==================== SEARCH ====================
@@ -2644,6 +2414,7 @@ function runSearch() {
       (p.description || '').toLowerCase().includes(q)
     );
   }
+  results = filterProperties(results, searchFilters);
   // Sort
   if (searchSort === 'price-asc') results.sort((a, b) => a.price - b.price);
   else if (searchSort === 'price-desc') results.sort((a, b) => b.price - a.price);
@@ -2656,12 +2427,12 @@ function runSearch() {
   } else {
     container.innerHTML = '<div class="prop-list">' + results.map(p => propListHTML(p)).join('') + '</div>';
   }
-  lucide.createIcons();
+  refreshIcons();
 }
 
 function cycleSort() {
-  document.getElementById('sort-modal').classList.add('active');
-  lucide.createIcons();
+  openDialog('sort-modal');
+  refreshIcons();
 }
 
 function applySort(sort) {
@@ -2672,15 +2443,18 @@ function applySort(sort) {
   runSearch();
 }
 
-function togglePriceFilter() { toast('Price filter: Use sort for now'); }
-function toggleBedFilter() { toast('Bedroom filter coming soon'); }
+function togglePriceFilter() { openFilters(); }
+function toggleBedFilter() { openFilters(); }
 
 // ==================== DETAIL ====================
 function openProperty(id) {
   const p = getProperty(id);
   if (!p) return;
-  currentPropertyId = id;
-  document.getElementById('detail-img').src = p.images?.[0] || p.image;
+  currentPropertyId = p.id;
+  id = p.id;
+  galleryIndex = 0;
+  document.getElementById('detail-img').src = safeImage(p.images?.[0] || p.image);
+  document.getElementById('detail-img').alt = p.title;
   document.getElementById('detail-counter').textContent = `1 / ${p.images?.length || 1}`;
   const favBtn = document.getElementById('detail-fav-btn');
   favBtn.classList.toggle('active', favorites.includes(id));
@@ -2689,38 +2463,40 @@ function openProperty(id) {
   const body = document.getElementById('detail-body');
   body.innerHTML = `
     <div class="detail-price">${formatPrice(p.price, p.period)}</div>
-    <div class="detail-title">${p.title}</div>
-    <div class="detail-loc"><i data-lucide="map-pin"></i> ${p.location}</div>
+    <div class="detail-title">${escapeHtml(p.title)}</div>
+    <div class="detail-loc"><i data-lucide="map-pin"></i> ${escapeHtml(p.location)}</div>
     ${p.verified ? '<div class="detail-verified"><i data-lucide="badge-check"></i> Verified Owner</div>' : ''}
     <div class="detail-stats">
       ${p.beds ? `<div class="stat-item"><i data-lucide="bed"></i> ${p.beds} beds</div>` : ''}
       ${p.baths ? `<div class="stat-item"><i data-lucide="bath"></i> ${p.baths} baths</div>` : ''}
       ${p.parking !== undefined ? `<div class="stat-item"><i data-lucide="car"></i> ${p.parking} parking</div>` : ''}
-      <div class="stat-item"><i data-lucide="home"></i> ${p.propType}</div>
+      <div class="stat-item"><i data-lucide="home"></i> ${escapeHtml(p.propType)}</div>
     </div>
     <div class="detail-section">
       <h3>Property Description</h3>
-      <p class="detail-desc" id="detail-desc">${p.description}</p>
+      <p class="detail-desc" id="detail-desc">${escapeHtml(p.description)}</p>
       <button class="show-more" onclick="this.previousElementSibling.style.webkitLineClamp='unset'; this.style.display='none'">Show more</button>
     </div>
     <div class="detail-section">
       <h3>Amenities</h3>
       <div class="amenities-grid">
-        ${(p.amenities || []).map(a => `<div class="amenity-item"><i data-lucide="check-circle-2"></i> ${a}</div>`).join('')}
+        ${(p.amenities || []).map(a => `<div class="amenity-item"><i data-lucide="check-circle-2"></i> ${escapeHtml(a)}</div>`).join('')}
       </div>
     </div>
+    <a class="location-map-link" href="https://www.google.com/maps/search/?api=1&amp;query=${encodeURIComponent(p.location + ", " + p.area)}" target="_blank" rel="noopener noreferrer">View this area on a map ↗</a>
     <div class="safety-notice">
       Safety first: NestFind does not collect, hold, or transfer property payments. Always inspect the property and make payment arrangements directly with the owner or agent after verifying the property.
     </div>
-    <button class="report-btn" onclick="toast('Report submitted. Our team will review this listing.')">Report Property</button>
+    <button class="report-btn" onclick="showServiceStatus('Property reports', 'Reporting is not connected to a moderation service yet. No report has been sent. Please avoid this listing if anything seems suspicious.')">Report Property</button>
   `;
   showScreen('detail');
-  lucide.createIcons();
+  refreshIcons();
 }
 
 function openChatFromDetail() {
   const p = getProperty(currentPropertyId);
   if (!p) return;
+  if (!currentUser) { toast('Sign in to keep your message drafts private to your account.'); showScreen('auth'); return; }
   let conv = conversations.find(c => c.propertyId === currentPropertyId);
   if (!conv) {
     conv = {
@@ -2741,6 +2517,7 @@ function openChatFromDetail() {
 
 // ==================== FAVORITES ====================
 function toggleFavorite(id, btn) {
+  id = getProperty(id)?.id ?? id;
   const idx = favorites.indexOf(id);
   if (idx >= 0) {
     favorites.splice(idx, 1);
@@ -2752,19 +2529,22 @@ function toggleFavorite(id, btn) {
     toast('Saved to favorites');
   }
   saveState();
-  lucide.createIcons();
+  refreshIcons();
   updateProfileCounts();
+  if (document.getElementById('screen-home').classList.contains('active')) renderHome();
+  if (document.getElementById('screen-search').classList.contains('active')) runSearch();
+  if (document.getElementById('screen-list').classList.contains('active') && document.getElementById('list-title').textContent === 'Saved Properties') showSaved();
 }
 
 // ==================== MAP ====================
 function renderMap() {
   const pins = document.getElementById('map-pins');
   pins.innerHTML = allProperties.filter(p => p.mapX).map(p => `
-    <div class="map-pin ${selectedMapProperty === p.id ? 'selected' : ''}" style="left:${p.mapX}%;top:${p.mapY}%" onclick="selectMapPin(${p.id})">
+    <div class="map-pin ${selectedMapProperty === p.id ? 'selected' : ''}" style="left:${p.mapX}%;top:${p.mapY}%" onclick="selectMapPin(${idArgument(p.id)})">
       <div class="map-pin-inner"><i data-lucide="home"></i></div>
     </div>
   `).join('');
-  lucide.createIcons();
+  refreshIcons();
   if (selectedMapProperty) showMapCard(selectedMapProperty);
 }
 
@@ -2780,11 +2560,11 @@ function showMapCard(id) {
   const card = document.getElementById('map-card');
   const badgeText = p.type === 'buy' ? 'For Sale' : 'For Rent';
   card.innerHTML = `
-    <img src="${p.image}" alt="${p.title}">
+    <img src="${escapeHtml(safeImage(p.image))}" alt="${escapeHtml(p.title)}">
     <div class="map-floating-info">
       <span class="badge">${badgeText}</span>
-      <div class="map-floating-title">${p.title}</div>
-      <div class="map-floating-loc">${p.location}</div>
+      <div class="map-floating-title">${escapeHtml(p.title)}</div>
+      <div class="map-floating-loc">${escapeHtml(p.location)}</div>
       <div class="map-floating-price">${formatPrice(p.price, p.period)}</div>
     </div>
   `;
@@ -2805,29 +2585,31 @@ function renderConversations() {
     container.innerHTML = '<div class="empty-state"><i data-lucide="message-circle"></i><p>No conversations yet</p></div>';
   } else {
     container.innerHTML = list.map(c => `
-      <div class="conversation-item" onclick="openChat(${c.id})">
-        <img class="conv-avatar" src="${c.avatar}" alt="${c.name}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%23E8F5F0%22 width=%22100%22 height=%22100%22/><text x=%2250%22 y=%2258%22 text-anchor=%22middle%22 fill=%22%230B6E4F%22 font-size=%2236%22>${c.name[0]}</text></svg>'">
+      <div class="conversation-item" onclick="openChat(${idArgument(c.id)})">
+        <img class="conv-avatar" src="${escapeHtml(safeImage(c.avatar))}" alt="${escapeHtml(c.name)}">
         <div class="conv-body">
           <div class="conv-top">
-            <span class="conv-name">${c.name}</span>
-            <span class="conv-time">${c.time}</span>
+            <span class="conv-name">${escapeHtml(c.name)}</span>
+            <span class="conv-time">${escapeHtml(c.time)}</span>
           </div>
-          <div class="conv-property">${c.property}</div>
-          <div class="conv-preview">${c.lastMessage || 'Start a conversation'}</div>
+          <div class="conv-property">${escapeHtml(c.property)}</div>
+          <div class="conv-preview">${escapeHtml(c.lastMessage || 'Start a conversation')}</div>
         </div>
         ${c.unread ? '<div class="conv-unread"></div>' : ''}
       </div>
     `).join('');
   }
-  lucide.createIcons();
+  refreshIcons();
 }
 
 function filterConversations() { renderConversations(); }
 
 function openChat(convId) {
-  const conv = conversations.find(c => c.id === convId);
+  const conv = conversations.find(c => String(c.id) === String(convId));
   if (!conv) return;
+  convId = conv.id;
   currentChatId = convId;
+  currentPropertyId = conv.propertyId;
   currentChatPropertyId = conv.propertyId;
   conv.unread = false;
   saveState();
@@ -2842,9 +2624,7 @@ function openChat(convId) {
   }
 
   if (!chatMessages[convId]) {
-    chatMessages[convId] = [
-      { sender: 'received', text: conv.lastMessage || 'Hello! How can I help you with this property?', time: conv.time }
-    ];
+    chatMessages[convId] = [];
   }
   renderChatMessages();
   showScreen('chat');
@@ -2856,7 +2636,7 @@ function renderChatMessages() {
   container.innerHTML = messages.map(m => `
     <div class="msg-bubble ${m.sender === 'sent' ? 'sent' : 'received'}">
       <div>${escapeHtml(m.text)}</div>
-      <div class="msg-time">${m.time || ''}</div>
+      <div class="msg-time">${escapeHtml(m.time || '')}</div>
     </div>
   `).join('');
   container.scrollTop = container.scrollHeight;
@@ -2870,6 +2650,7 @@ function sendMessage() {
   const input = document.getElementById('chat-input');
   const text = input.value.trim();
   if (!text || !currentChatId) return;
+  if (text.length > 4000) { toast('Keep your message under 4,000 characters.'); return; }
   const now = new Date();
   const time = now.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'});
   if (!chatMessages[currentChatId]) chatMessages[currentChatId] = [];
@@ -2879,6 +2660,7 @@ function sendMessage() {
   input.value = '';
   saveState();
   renderChatMessages();
+  toast('Draft saved on this device. It has not been sent.');
 }
 
 // ==================== ADD PROPERTY ====================
@@ -2891,6 +2673,9 @@ function addPhotoPreview() {
   const input = document.getElementById('add-photo-url');
   const url = input.value.trim();
   if (!url) { toast('Paste an image URL first'); return; }
+  if (!isHttpsUrl(url)) { toast('Use a valid HTTPS image link.'); return; }
+  if (photoUrls.length >= 12) { toast('You can add up to 12 photos.'); return; }
+  if (photoUrls.includes(url)) { toast('This photo is already added.'); return; }
   photoUrls.push(url);
   input.value = '';
   renderPhotoPreviews();
@@ -2938,16 +2723,17 @@ async function publishListing() {
   const city = document.getElementById('add-city').value.trim() || 'Lagos';
   const price = Number(document.getElementById('add-price').value || 0);
   const period = periodForType(selectedListingType());
-  const contact = document.getElementById('add-contact').value;
+
   const phone = document.getElementById('add-phone').value.trim();
 
-  if (!title || !description || !location || !price) {
-    toast('Complete the required property fields.');
+  if (!title || !description || !location || !Number.isFinite(price) || price <= 0 || [beds,baths,parking].some(n => !Number.isInteger(n) || n < 0)) {
+    toast('Add a title, description, location and positive price. Room counts must be whole numbers.');
+    document.querySelectorAll('#screen-add .form-section').forEach(el => el.classList.add('open'));
     return;
   }
 
-  const fallbackImage = 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&q=80';
-  const photos = photoUrls.length ? [...photoUrls] : [fallbackImage];
+  if (!photoUrls.length) { toast('Add at least one real photo of this property.'); document.getElementById('sec-photos').classList.add('open'); return; }
+  const photos = [...photoUrls];
   const type = selectedListingType();
   const listing = {
     owner_id: currentUser.id,
@@ -2963,7 +2749,7 @@ async function publishListing() {
     parking,
     description,
     photos,
-    amenities: ['Security', 'Water', ...(parking ? ['Parking'] : [])],
+    amenities: parking ? ['Parking'] : [],
     is_verified: false,
     is_featured: false,
     status: 'active'
@@ -2979,20 +2765,21 @@ async function publishListing() {
 
   try {
     // Keep the public profile row in sync before creating the property.
-    await supabaseClient.from('profiles').upsert({
+    const { error: profileError } = await supabaseClient.from('profiles').upsert({
       id: currentUser.id,
       full_name: currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || 'NestFind Member',
       email: currentUser.email || '',
       phone: phone || currentUser.user_metadata?.phone || ''
     });
 
+    if (profileError) throw profileError;
     const { data, error } = await supabaseClient.from('properties').insert(listing).select().single();
     if (error) throw error;
 
     const row = data || listing;
     const local = dbPropertyToApp(row);
     userListings.unshift(local);
-    allProperties = [...PROPERTIES, ...userListings];
+    allProperties = [...userListings];
     saveState();
     renderHome();
     toast('Property published successfully.');
@@ -3020,10 +2807,10 @@ function resetListingForm() {
 
 // ==================== PROFILE ====================
 function updateProfileCounts() {
-  const own = currentUser ? allProperties.filter(p => String(p.ownerId || '') === String(currentUser.id)).length : userListings.length;
+  const own = currentUser ? allProperties.filter(p => String(p.ownerId || '') === String(currentUser.id)).length : 0;
   const saved = favorites.length;
   const unread = conversations.filter(c => c.unread).length;
-  const upcoming = viewings.filter(v => !v.status || v.status === 'Requested').length;
+  const upcoming = viewings.filter(v => new Date(v.date + 'T' + v.time) > new Date()).length;
   const listingsEl = document.getElementById('count-listings');
   const savedEl = document.getElementById('count-saved');
   const msgEl = document.getElementById('count-messages');
@@ -3031,26 +2818,30 @@ function updateProfileCounts() {
   if (listingsEl) listingsEl.textContent = `${own} active listing${own === 1 ? '' : 's'}`;
   if (savedEl) savedEl.textContent = `${saved} saved propert${saved === 1 ? 'y' : 'ies'}`;
   if (msgEl) msgEl.textContent = `${unread} unread message${unread === 1 ? '' : 's'}`;
-  if (viewEl) viewEl.textContent = `${upcoming} upcoming viewing${upcoming === 1 ? '' : 's'}`;
+  if (viewEl) viewEl.textContent = `${upcoming} viewing draft${upcoming === 1 ? '' : 's'}`;
 }
 
 function updateProfileUI() {
-  const name = currentUser?.user_metadata?.full_name || 'NestFind Member';
+  const name = currentUser?.user_metadata?.full_name || (currentUser ? 'NestFind Member' : 'Guest');
   const email = currentUser?.email || 'Sign in to manage your account';
   const avatar = document.getElementById('profile-avatar');
   const nameEl = document.getElementById('profile-name');
   const emailEl = document.getElementById('profile-email');
   if (nameEl) nameEl.textContent = name;
   if (emailEl) emailEl.textContent = email;
-  if (avatar && currentUser && !currentUser.user_metadata?.avatar_url) {
-    const letter = encodeURIComponent(name.charAt(0).toUpperCase());
-    avatar.src = `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="%23E8F5F0" width="100" height="100"/><text x="50" y="62" text-anchor="middle" fill="%230B6E4F" font-size="42">${letter}</text></svg>`;
+  const membership = document.getElementById('membership-label');
+  if (membership) membership.textContent = currentUser ? 'NestFind Member' : 'Guest browsing';
+  const accountLabel = document.getElementById('account-action-label');
+  if (accountLabel) accountLabel.textContent = currentUser ? 'Log Out' : 'Sign In';
+  if (avatar) {
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="#E8F5F0" width="100" height="100"/><text x="50" y="62" text-anchor="middle" fill="#0B6E4F" font-size="42">' + escapeHtml(name.charAt(0).toUpperCase()) + '</text></svg>';
+    avatar.src = 'data:image/svg+xml,' + encodeURIComponent(svg);
   }
   updateProfileCounts();
 }
 
 function showMyListings() {
-  const mine = allProperties.filter(p => currentUser ? String(p.ownerId || '') === String(currentUser.id) : userListings.includes(p));
+  const mine = allProperties.filter(p => currentUser && String(p.ownerId || '') === String(currentUser.id));
   document.getElementById('list-title').textContent = 'My Listings';
   document.getElementById('list-content').innerHTML = mine.length
     ? mine.map(propListHTML).join('')
@@ -3088,12 +2879,12 @@ function openScheduleModal() {
   const d = new Date();
   d.setDate(d.getDate() + 1);
   const dateEl = document.getElementById('viewing-date');
-  dateEl.min = d.toISOString().slice(0,10);
-  dateEl.value = d.toISOString().slice(0,10);
+  dateEl.min = localDate(d);
+  dateEl.value = localDate(d);
   document.getElementById('viewing-time').value = '14:00';
   document.getElementById('viewing-message').value = '';
-  document.getElementById('schedule-modal').classList.add('active');
-  lucide.createIcons();
+  openDialog('schedule-modal');
+  refreshIcons();
 }
 
 function submitViewing() {
@@ -3103,24 +2894,26 @@ function submitViewing() {
   const date = document.getElementById('viewing-date').value;
   const time = document.getElementById('viewing-time').value;
   const message = document.getElementById('viewing-message').value.trim();
-  if (!date || !time) { toast('Choose a date and time.'); return; }
-  const v = { id: Date.now(), propertyId: p.id, propertyTitle: p.title, date, time, message, status: 'Requested' };
+  if (!date || !time || new Date(date + 'T' + time) <= new Date()) { toast('Choose a future date and time.'); return; }
+  const v = { id: Date.now(), propertyId: p.id, propertyTitle: p.title, date, time, message, status: 'Draft — not sent' };
   viewings.push(v);
   saveState();
   closeModal('schedule-modal');
   updateProfileCounts();
-  toast('Viewing request saved. Chat with the owner to confirm.');
+  toast('Viewing draft saved on this device. It has not been sent to the owner.');
 }
 
-function closeModal(id) { document.getElementById(id)?.classList.remove('active'); }
+function closeModal(id) { document.getElementById(id)?.classList.remove('active'); modalReturnFocus?.focus(); }
 
 // ==================== AUTH / SUPABASE ====================
 const SUPABASE_URL = 'https://rjpzolccephzpbbqrbwq.supabase.co';
-const SUPABASE_PUBLISHABLE_KEY = sb_publishable_okN3fziucg3ARPecOOSLnw_TvMYsVmM
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_okN3fziucg3ARPecOOSLnw_TvMYsVmM';
 const supabaseClient = window.supabase?.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY) || null;
 
 function switchAuthTab(mode) {
   authMode = mode;
+  document.getElementById('auth-password').autocomplete = mode === 'signup' ? 'new-password' : 'current-password';
+  document.getElementById('auth-name').required = mode === 'signup';
   document.getElementById('tab-signin').classList.toggle('active', mode === 'signin');
   document.getElementById('tab-signup').classList.toggle('active', mode === 'signup');
   document.getElementById('auth-name-group').style.display = mode === 'signup' ? 'block' : 'none';
@@ -3157,7 +2950,8 @@ async function handleAuth(event) {
       const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
       if (error) throw error;
       currentUser = data.user;
-      localStorage.setItem('nf_user', JSON.stringify(currentUser));
+      loadAccountState();
+      writeStorage('nf_user', currentUser);
       await loadCurrentUserData();
       showAuthSuccess('Signed in successfully.');
       setTimeout(() => showScreen('home'), 250);
@@ -3169,8 +2963,10 @@ async function handleAuth(event) {
       });
       if (error) throw error;
       if (data.user) {
-        currentUser = data.user;
-        localStorage.setItem('nf_user', JSON.stringify(currentUser));
+        currentUser = data.session?.user || null;
+        loadAccountState();
+        writeStorage('nf_user', currentUser);
+        if (data.session) {
         const { error: profileError } = await supabaseClient.from('profiles').upsert({
           id: data.user.id,
           full_name: name || data.user.email?.split('@')[0] || 'NestFind Member',
@@ -3178,6 +2974,7 @@ async function handleAuth(event) {
           phone: ''
         });
         if (profileError) console.warn('Profile upsert:', profileError);
+        }
         if (data.session) {
           showAuthSuccess('Account created successfully.');
           setTimeout(() => showScreen('home'), 250);
@@ -3198,9 +2995,10 @@ async function handleAuth(event) {
 }
 
 async function handleLogout() {
-  if (supabaseClient) await supabaseClient.auth.signOut();
+  if (supabaseClient) { const { error } = await supabaseClient.auth.signOut(); if (error) { toast('Sign-out failed. Please try again.'); return; } }
   currentUser = null;
-  localStorage.removeItem('nf_user');
+  loadAccountState();
+  removeStorage('nf_user');
   updateProfileUI();
   toast('Signed out.');
   showScreen('home');
@@ -3220,7 +3018,7 @@ function dbPropertyToApp(row) {
     location: row.location || row.city || 'Lagos, Nigeria',
     area: row.city || row.location || 'Lagos',
     price: Number(row.price || 0),
-    period: periodMap[row.price_period] || 'year',
+    period: type === 'buy' ? 'sale' : periodMap[row.price_period] || (type === 'hotel' ? 'night' : 'year'),
     type,
     propType: row.property_type || 'Property',
     beds: Number(row.bedrooms || 0),
@@ -3247,14 +3045,16 @@ async function loadCurrentUserData() {
     const { data } = await supabaseClient.from('profiles').select('*').eq('id', currentUser.id).maybeSingle();
     if (data) {
       currentUser = { ...currentUser, user_metadata: { ...currentUser.user_metadata, full_name: data.full_name || currentUser.user_metadata?.full_name } };
-      localStorage.setItem('nf_user', JSON.stringify(currentUser));
+      writeStorage('nf_user', currentUser);
     }
   } catch (e) { console.warn(e); }
   updateProfileUI();
 }
 
 async function loadSupabaseProperties() {
-  if (!supabaseClient) return;
+  if (!supabaseClient) { catalogState = 'error'; renderHome(); return; }
+  catalogState = 'loading';
+  renderHome();
   try {
     const { data, error } = await supabaseClient
       .from('properties')
@@ -3263,46 +3063,59 @@ async function loadSupabaseProperties() {
       .order('created_at', { ascending: false });
     if (error) throw error;
     const remote = (data || []).map(dbPropertyToApp);
-    const seedIds = new Set(PROPERTIES.map(p => String(p.id)));
-    userListings = remote.filter(p => !seedIds.has(String(p.id)));
-    allProperties = [...PROPERTIES, ...userListings];
+    userListings = remote;
+    catalogState = 'ready';
+    allProperties = [...userListings];
     saveState();
     renderHome();
     if (document.getElementById('screen-search')?.classList.contains('active')) runSearch();
     updateProfileCounts();
   } catch (err) {
+    catalogState = 'error';
+    renderHome();
     console.warn('Could not load properties:', err);
   }
 }
 
 // ==================== INIT ====================
 async function initNestFind() {
-  lucide.createIcons();
+  refreshIcons();
   renderHome();
   renderConversations();
   updateProfileUI();
   const { data } = supabaseClient ? await supabaseClient.auth.getSession() : { data: { session: null } };
   if (data?.session?.user) {
     currentUser = data.session.user;
-    localStorage.setItem('nf_user', JSON.stringify(currentUser));
+    writeStorage('nf_user', currentUser);
     await loadCurrentUserData();
   } else {
-    currentUser = JSON.parse(localStorage.getItem('nf_user') || 'null');
+    currentUser = null;
+    removeStorage('nf_user');
   }
+  loadAccountState();
+  updateProfileUI();
   if (supabaseClient) {
     supabaseClient.auth.onAuthStateChange((_event, session) => {
+      const previousId = currentUser?.id;
       currentUser = session?.user || null;
-      if (currentUser) localStorage.setItem('nf_user', JSON.stringify(currentUser));
-      else localStorage.removeItem('nf_user');
+      if (previousId !== currentUser?.id) {
+        loadAccountState();
+        renderConversations();
+        document.getElementById('chat-messages').innerHTML = '';
+        document.getElementById('list-content').innerHTML = '';
+        if (previousId) showScreen('home');
+      }
+      if (currentUser) writeStorage('nf_user', currentUser);
+      else removeStorage('nf_user');
       updateProfileUI();
     });
     await loadSupabaseProperties();
   }
   if (currentUser) await loadCurrentUserData();
-  lucide.createIcons();
+  refreshIcons();
 }
 
-initNestFind();
 </script>
+<script src="improvements.js"></script>
 </body>
 </html>
