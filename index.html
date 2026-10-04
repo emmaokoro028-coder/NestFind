@@ -2459,7 +2459,7 @@ body {
     <div class="header">
       <div style="width:40px"></div>
       <div class="header-title">My Profile</div>
-      <button class="icon-btn" onclick="toast('Settings')"><i data-lucide="settings"></i></button>
+      <button class="icon-btn" onclick="switchAuthTab('signin');showScreen('auth')"><i data-lucide="settings"></i></button>
     </div>
     <div class="scroll-content" id="profile-scroll">
       <div class="profile-header-area">
@@ -2716,6 +2716,24 @@ let selectedMapProperty = null;
 let photoUrls = [];
 let photoFiles = [];
 let videoFile = null;
+let mediaDraftVersion = 0;
+let mediaUploadCache = new WeakMap();
+const activeMediaUploads = new Map();
+let publishingDraft = false;
+let mediaPreviewUrls = [];
+function assertMediaAccount(userId, draftVersion) {
+  if (currentUser?.id !== userId || mediaDraftVersion !== draftVersion) throw new Error('This listing session changed. Reopen your draft before retrying.');
+}
+function mediaSnapshot() {
+  return { userId: currentUser?.id, draftVersion: mediaDraftVersion, photos: [...photoFiles], urls: [...photoUrls], video: videoFile };
+}
+function clearMediaUploads() {
+  mediaDraftVersion++;
+  mediaUploadCache = new WeakMap();
+  for (const [upload, cancel] of activeMediaUploads) { upload.abort().catch(() => {}); cancel(new Error('Upload cancelled because the listing session changed.')); }
+  activeMediaUploads.clear();
+}
+
 let authMode = 'signin';
 let pendingSignup = null;
 let otpResendTimer = null;
@@ -3665,16 +3683,18 @@ async function markNotificationRead(id) {
 
 async function markAllNotificationsRead() {
   if (!supabaseClient || !currentUser) return;
-  if (!notifications.some(n => !n.read)) { toast('All notifications are already read.'); return; }
+  const ids = notifications.filter(n => !n.read).map(n => n.id);
+  if (!ids.length) { toast('All notifications are already read.'); return; }
   const userId = currentUser.id;
   try {
-    const { error } = await supabaseClient.from('notifications').update({ is_read: true }).eq('user_id', userId).eq('is_read', false);
+    const { data, error } = await supabaseClient.from('notifications').update({ is_read: true }).eq('user_id', userId).in('id', ids).select('id');
     if (error) throw error;
     if (currentUser?.id !== userId) return;
-    notifications.forEach(n => { n.read = true; n.is_read = true; });
+    const confirmed = new Set((data || []).map(row => String(row.id)));
+    notifications.forEach(n => { if (confirmed.has(String(n.id))) { n.read = true; n.is_read = true; } });
     renderNotifications();
-    toast('All notifications marked as read.');
-  } catch (error) { toast('Could not mark notifications as read. Please try again.'); }
+    toast('Notifications marked as read.');
+  } catch (error) { if (currentUser?.id === userId) toast('Could not mark notifications as read. Please try again.'); }
 }
 
 async function handleNotificationClick(id) {
@@ -3776,7 +3796,7 @@ async function loadRemoteConversations() {
       group.messages.push(row);
       group.lastMessage = rowText;
       group.time = formatChatTime(row.created_at);
-      if (receiver === me && !row.read_at && key !== String(currentChatId || '')) group.unread = true;
+      if (receiver === me && !row.read_at) group.unread = true;
     }
 
     const remote = Array.from(groups.values());
@@ -3799,7 +3819,8 @@ async function loadRemoteConversations() {
         sender: String(m.sender_id) === String(currentUser.id) ? 'sent' : 'received',
         text: String(m.content ?? m.message ?? ''),
         time: formatChatTime(m.created_at),
-        createdAt: m.created_at
+        createdAt: m.created_at,
+        readAt: m.read_at || null
       }));
     }
     saveState();
@@ -3887,7 +3908,9 @@ async function sendSupportMessage() {
   const input = document.getElementById('support-chat-input');
   const button = document.getElementById('support-chat-send');
   const text = String(input?.value || '').trim();
-  if (!text) return;
+  if (!text || button?.disabled) return;
+  if (text.length > 5000) { toast('Messages must be 5,000 characters or fewer.'); return; }
+  const sentUserId = currentUser.id;
   if (input) input.disabled = true;
   if (button) button.disabled = true;
 
@@ -3904,7 +3927,8 @@ async function sendSupportMessage() {
       .single();
     if (error) throw error;
 
-    supportMessages.push({
+    if (currentUser?.id !== sentUserId) return;
+    if (!supportMessages.some(message => String(message.id) === String(data.id))) supportMessages.push({
       id: data.id,
       sender: 'user',
       text: String(data.content || text),
@@ -3912,11 +3936,11 @@ async function sendSupportMessage() {
       createdAt: data.created_at
     });
     saveSupportMessages();
-    if (input) input.value = '';
+    if (input && input.value.trim() === text) input.value = '';
     renderSupportMessages();
   } catch (error) {
     console.error('NestFind support send error:', error);
-    toast(error?.message || 'Your support message could not be sent.');
+    if (currentUser?.id === sentUserId) toast(error?.message || 'Your support message could not be sent.');
   } finally {
     if (input) input.disabled = false;
     if (button) button.disabled = false;
@@ -3970,48 +3994,81 @@ async function openSupportChat() {
   setTimeout(() => document.getElementById('support-chat-input')?.focus(), 100);
 }
 
+function conversationIsVisible(convId) {
+  return String(currentChatId) === String(convId) && document.visibilityState !== 'hidden' && document.getElementById('screen-chat')?.classList.contains('active');
+}
+const pendingReadMessages = new Set();
+async function markConversationRead(conv) {
+  const userId = currentUser?.id;
+  if (!userId || !supabaseClient || !conversationIsVisible(conv?.id)) return;
+  const ids = (chatMessages[conv.id] || []).filter(m => m.sender === 'received' && !m.readAt && !pendingReadMessages.has(userId + ':' + m.id)).map(m => m.id);
+  if (!ids.length) return;
+  ids.forEach(id => pendingReadMessages.add(userId + ':' + id));
+  try {
+    const { data, error } = await supabaseClient.from('messages')
+      .update({ read_at: new Date().toISOString() }).eq('receiver_id', userId)
+      .in('id', ids).is('read_at', null).select('id,read_at');
+    if (currentUser?.id !== userId) return;
+    if (error) throw error;
+    const confirmed = new Map((data || []).map(row => [String(row.id), row.read_at]));
+    for (const message of chatMessages[conv.id] || []) {
+      if (confirmed.has(String(message.id))) message.readAt = confirmed.get(String(message.id));
+    }
+    const current = conversations.find(item => String(item.id) === String(conv.id));
+    if (current) current.unread = (chatMessages[conv.id] || []).some(m => m.sender === 'received' && !m.readAt);
+    renderConversations();
+    updateProfileCounts();
+  } catch (error) {
+    if (currentUser?.id === userId) toast('Messages opened, but read status could not be saved. Reopen the chat to retry.');
+  } finally {
+    ids.forEach(id => pendingReadMessages.delete(userId + ':' + id));
+  }
+}
 async function loadRemoteMessagesForConversation(conv) {
   const requestUserId = currentUser?.id;
-  if (!currentUser || !supabaseClient || !conv?.propertyId || !conv?.otherUserId) return;
+  if (!requestUserId || !supabaseClient || !conv?.propertyId || !conv?.otherUserId) return false;
   try {
-    const me = String(currentUser.id);
+    const me = String(requestUserId);
     const other = String(conv.otherUserId);
-    const { data, error } = await supabaseClient
-      .from('messages')
+    const { data, error } = await supabaseClient.from('messages')
       .select('id,sender_id,receiver_id,property_id,content,message,created_at,read_at')
       .eq('property_id', conv.propertyId)
       .or(`and(sender_id.eq.${me},receiver_id.eq.${other}),and(sender_id.eq.${other},receiver_id.eq.${me})`)
       .order('created_at', { ascending: true });
-    if (currentUser?.id !== requestUserId) return;
+    if (currentUser?.id !== requestUserId) return false;
     if (error) throw error;
-
-    const rows = data || [];
-    chatMessages[conv.id] = rows.map(row => ({
-      id: row.id,
-      sender: String(row.sender_id) === me ? 'sent' : 'received',
-      text: String(row.content ?? row.message ?? ''),
-      time: formatChatTime(row.created_at),
-      createdAt: row.created_at
-    }));
-
-    if (rows.length) {
-      const last = rows[rows.length - 1];
-      conv.lastMessage = String(last.content ?? last.message ?? '');
-      conv.time = formatChatTime(last.created_at);
+    // Preserve messages received while this request was in flight.
+    const merged = new Map((chatMessages[conv.id] || []).map(message => [String(message.id), message]));
+    for (const row of data || []) {
+      const prior = merged.get(String(row.id));
+      merged.set(String(row.id), { id: row.id, sender: String(row.sender_id) === me ? 'sent' : 'received',
+        text: String(row.content ?? row.message ?? ''), time: formatChatTime(row.created_at),
+        createdAt: row.created_at, readAt: row.read_at || prior?.readAt || null });
     }
+    chatMessages[conv.id] = [...merged.values()].sort((a,b) => new Date(a.createdAt) - new Date(b.createdAt));
+    const last = chatMessages[conv.id].at(-1);
+    if (last) { conv.lastMessage = last.text; conv.time = last.time; }
+    conv.unread = chatMessages[conv.id].some(m => m.sender === 'received' && !m.readAt);
     conv.name = await resolveConversationName(conv);
-    if (currentUser?.id !== requestUserId) return;
-    const p = getConversationProperty(conv);
-    if (p) {
-      conv.property = `${p.title} - ${p.area || p.location || ''}`;
-      conv.avatar = p.ownerAvatar || '';
+    if (currentUser?.id !== requestUserId) return false;
+    const property = getConversationProperty(conv);
+    if (property) { conv.property = `${property.title} - ${property.area || property.location || ''}`; conv.avatar = property.ownerAvatar || ''; }
+    if (conversationIsVisible(conv.id)) {
+      renderOpenChatHeader(conv);
+      renderChatMessages();
+      await markConversationRead(conv);
     }
-    saveState();
-    renderChatMessages();
+    return true;
   } catch (error) {
-    console.error('NestFind conversation load error:', error);
-    toast(error?.message || 'Could not load this conversation.');
+    if (currentUser?.id === requestUserId && conversationIsVisible(conv.id)) {
+      document.getElementById('chat-messages').innerHTML = '<div class="empty-state"><p>Could not load this conversation.</p><button class="btn-outline" onclick="retryOpenConversation()">Try again</button></div>';
+    }
+    return false;
   }
+}
+function retryOpenConversation() {
+  const conv = conversations.find(item => String(item.id) === String(currentChatId));
+  if (conv) return loadRemoteMessagesForConversation(conv);
 }
 
 function renderConversations() {
@@ -4069,21 +4126,17 @@ function renderOpenChatHeader(conv) {
 }
 
 async function openChat(convId) {
-  if (!(await requireMessageAccess())) {
-    pendingChatConversationId = convId;
-    return;
-  }
+  const userId = currentUser?.id;
+  if (!(await requireMessageAccess())) { pendingChatConversationId = convId; return; }
+  if (currentUser?.id !== userId) return;
   const conv = conversations.find(c => String(c.id) === String(convId));
   if (!conv) return;
   currentChatId = conv.id;
   currentChatPropertyId = conv.propertyId;
-  conv.unread = false;
-  await loadRemoteMessagesForConversation(conv);
-  saveState();
   renderOpenChatHeader(conv);
-  renderConversations();
-  renderChatMessages();
   showScreen('chat');
+  document.getElementById('chat-messages').innerHTML = '<div class="empty-state"><p>Loading conversation…</p></div>';
+  await loadRemoteMessagesForConversation(conv);
 }
 
 function renderChatMessages() {
@@ -4118,6 +4171,7 @@ async function sendMessage() {
     return;
   }
 
+  if (input.disabled) return;
   const sentConversationId = conv.id;
   const sentUserId = currentUser.id;
   const sendButton = document.querySelector('.chat-send');
@@ -4139,7 +4193,7 @@ async function sendMessage() {
     if (currentUser?.id !== sentUserId) return;
     if (error) throw error;
 
-    input.value = '';
+    if (String(currentChatId) === String(sentConversationId) && input.value.trim() === text) input.value = '';
     const message = {
       id: data.id,
       sender: 'sent',
@@ -4151,7 +4205,6 @@ async function sendMessage() {
     chatMessages[sentConversationId].push(message);
     conv.lastMessage = String(data.content ?? data.message ?? text);
     conv.time = formatChatTime(data.created_at);
-    conv.unread = false;
     saveState();
     renderChatMessages();
     renderConversations();
@@ -4220,7 +4273,7 @@ function startRealtimeMessages() {
       conv.lastMessage = rowText;
       conv.time = formatChatTime(row.created_at);
       const isOpen = String(currentChatId) === String(conv.id) && document.getElementById('screen-chat')?.classList.contains('active');
-      conv.unread = !isOpen;
+      conv.unread = true;
 
       if (!chatMessages[conv.id]) chatMessages[conv.id] = [];
       const exists = chatMessages[conv.id].some(m => String(m.id) === String(row.id));
@@ -4230,13 +4283,14 @@ function startRealtimeMessages() {
           sender: 'received',
           text: String(row.content ?? row.message ?? ''),
           time: formatChatTime(row.created_at),
-          createdAt: row.created_at
+          createdAt: row.created_at,
+          readAt: row.read_at || null
         });
       }
 
       saveState();
       renderConversations();
-      if (isOpen) renderChatMessages();
+      if (isOpen) { renderChatMessages(); await markConversationRead(conv); }
       else toast(`New message from ${conv.name}`);
       updateProfileCounts();
     })
@@ -4490,8 +4544,11 @@ function renderPhotoPreviews() {
   const box = document.getElementById('photo-previews');
   if (!box) return;
 
+  mediaPreviewUrls.forEach(url => URL.revokeObjectURL(url));
+  mediaPreviewUrls = [];
   const imageCards = photoFiles.map((file, i) => {
     const url = URL.createObjectURL(file);
+    mediaPreviewUrls.push(url);
     return `
       <div class="media-file-chip">
         <img src="${url}" alt="Selected property photo">
@@ -4511,6 +4568,7 @@ function renderPhotoPreviews() {
 
   const videoCard = videoFile ? (() => {
     const url = URL.createObjectURL(videoFile);
+    mediaPreviewUrls.push(url);
     return `
       <div class="media-file-chip">
         <video src="${url}" muted playsinline controls></video>
@@ -4546,85 +4604,74 @@ function safeStorageName(name) {
     .slice(0, 100);
 }
 
-async function uploadPropertyMedia(file, folder) {
-  if (!supabaseClient || !currentUser) throw new Error('Supabase is not connected.');
-  const ext = (file.name.split('.').pop() || 'bin').toLowerCase();
-  const filename = `${Date.now()}-${crypto.randomUUID()}.${ext}`;
-  const path = `properties/${currentUser.id}/${folder}/${filename}`;
-
-  // Supabase recommends resumable TUS uploads for files larger than 6 MB.
-  // Use TUS for videos so a slow/interrupted connection can resume instead of
-  // restarting the entire upload.
-  if (folder === 'videos' && file.size > 6 * 1024 * 1024 && window.tus) {
-    const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
-    if (sessionError || !sessionData?.session?.access_token) {
-      throw new Error('Your sign-in session expired. Please sign in again.');
-    }
-
-    const projectRef = 'rjpzolccephzpbbqrbwq';
-    const endpoint = `https://${projectRef}.storage.supabase.co/storage/v1/upload/resumable`;
-
-    return await new Promise((resolve, reject) => {
-      const upload = new tus.Upload(file, {
-        endpoint,
-        retryDelays: [0, 3000, 5000, 10000, 20000],
-        headers: {
-          authorization: `Bearer ${sessionData.session.access_token}`,
-          'x-upsert': 'false'
-        },
-        uploadDataDuringCreation: true,
-        removeFingerprintOnSuccess: true,
-        chunkSize: 6 * 1024 * 1024,
-        metadata: {
-          bucketName: 'property-media',
-          objectName: path,
-          contentType: file.type || 'video/mp4',
-          cacheControl: '3600'
-        },
-        onError(error) {
-          console.error('NestFind resumable upload error:', error);
-          reject(error);
-        },
-        onProgress(bytesUploaded, bytesTotal) {
-          const pct = Math.round((bytesUploaded / bytesTotal) * 100);
-          const button = document.querySelector('#screen-add .add-publish-bar .btn-primary');
-          if (button) button.textContent = `Uploading video ${pct}%…`;
-        },
-        onSuccess() {
-          const publicUrl = supabaseClient.storage.from('property-media').getPublicUrl(path).data.publicUrl;
-          resolve(publicUrl);
-        }
+async function uploadPropertyMedia(file, folder, snapshot = mediaSnapshot()) {
+  if (!supabaseClient || !snapshot.userId) throw new Error('Please sign in before uploading.');
+  assertMediaAccount(snapshot.userId, snapshot.draftVersion);
+  let entries = mediaUploadCache.get(file);
+  if (!entries) { entries = new Map(); mediaUploadCache.set(file, entries); }
+  const key = snapshot.userId + ':' + snapshot.draftVersion + ':' + folder;
+  let entry = entries.get(key);
+  if (entry?.url) return entry.url;
+  if (entry?.promise) return entry.promise;
+  if (!entry) {
+    const ext = safeStorageName(file.name.split('.').pop() || 'bin');
+    entry = { path: `properties/${snapshot.userId}/${folder}/${Date.now()}-${crypto.randomUUID()}.${ext}` };
+    entries.set(key, entry);
+  }
+  entry.promise = (async () => {
+    const path = entry.path;
+    if (folder === 'videos' && file.size > 6 * 1024 * 1024 && window.tus) {
+      const { data, error } = await supabaseClient.auth.getSession();
+      assertMediaAccount(snapshot.userId, snapshot.draftVersion);
+      if (error || data?.session?.user?.id !== snapshot.userId || !data.session.access_token) throw new Error('Your sign-in session expired. Please sign in again.');
+      await new Promise((resolve, reject) => {
+        const options = {
+          endpoint: 'https://rjpzolccephzpbbqrbwq.storage.supabase.co/storage/v1/upload/resumable',
+          headers: { authorization: `Bearer ${data.session.access_token}`, 'x-upsert': 'false' },
+          retryDelays: [0, 3000, 5000, 10000, 20000],
+          uploadDataDuringCreation: true, removeFingerprintOnSuccess: true, chunkSize: 6 * 1024 * 1024,
+          metadata: { bucketName: 'property-media', objectName: path, contentType: file.type || 'video/mp4', cacheControl: '3600' },
+          onError(error) { activeMediaUploads.delete(entry.upload); reject(error); },
+          onProgress(uploaded, total) {
+            if (currentUser?.id !== snapshot.userId || mediaDraftVersion !== snapshot.draftVersion) return;
+            const button = document.querySelector('#screen-add .add-publish-bar .btn-primary');
+            if (button && total) button.textContent = `Uploading video ${Math.round(uploaded / total * 100)}%…`;
+          },
+          onSuccess() { activeMediaUploads.delete(entry.upload); resolve(); }
+        };
+        // Reuse the same upload URL/object path when retrying an interrupted video.
+        if (entry.upload) Object.assign(entry.upload.options, options);
+        else entry.upload = new window.tus.Upload(file, options);
+        activeMediaUploads.set(entry.upload, reject);
+        entry.upload.start();
       });
-
-      upload.start();
-    });
-  }
-
-  const { error } = await supabaseClient.storage
-    .from('property-media')
-    .upload(path, file, {
-      cacheControl: '3600',
-      upsert: false,
-      contentType: file.type
-    });
-
-  if (error) throw error;
-  return supabaseClient.storage.from('property-media').getPublicUrl(path).data.publicUrl;
+    } else {
+      const { error } = await supabaseClient.storage.from('property-media').upload(path, file, { cacheControl: '3600', upsert: false, contentType: file.type });
+      if (error) {
+        // Standard uploads are atomic. If the reply was lost, confirm the object exists before retrying it.
+        const directory = path.slice(0, path.lastIndexOf('/'));
+        const name = path.slice(path.lastIndexOf('/') + 1);
+        const existing = await supabaseClient.storage.from('property-media').list(directory, { search: name, limit: 1 });
+        if (existing.error || !existing.data?.some(item => item.name === name)) throw error;
+      }
+    }
+    assertMediaAccount(snapshot.userId, snapshot.draftVersion);
+    const url = supabaseClient.storage.from('property-media').getPublicUrl(path).data.publicUrl;
+    entry.url = url;
+    return url;
+  })();
+  try { return await entry.promise; }
+  finally { entry.promise = null; }
 }
-async function uploadSelectedMedia() {
-  const uploadedPhotos = [];
-  if (photoFiles.length) {
-    const results = await Promise.all(photoFiles.map(file => uploadPropertyMedia(file, 'images')));
-    uploadedPhotos.push(...results);
-  }
-
-  let uploadedVideo = '';
-  if (videoFile) {
-    const button = document.querySelector('#screen-add .add-publish-bar .btn-primary');
-    if (button) button.textContent = 'Uploading video…';
-    uploadedVideo = await uploadPropertyMedia(videoFile, 'videos');
-  }
-
+async function uploadSelectedMedia(snapshot = mediaSnapshot()) {
+  assertMediaAccount(snapshot.userId, snapshot.draftVersion);
+  const results = await Promise.allSettled(snapshot.photos.map(file => uploadPropertyMedia(file, 'images', snapshot)));
+  assertMediaAccount(snapshot.userId, snapshot.draftVersion);
+  const failure = results.find(result => result.status === 'rejected');
+  if (failure) throw failure.reason;
+  const uploadedPhotos = results.map(result => result.value);
+  const uploadedVideo = snapshot.video ? await uploadPropertyMedia(snapshot.video, 'videos', snapshot) : '';
+  assertMediaAccount(snapshot.userId, snapshot.draftVersion);
   return { uploadedPhotos, uploadedVideo };
 }
 async function publishListing() {
@@ -4683,55 +4730,51 @@ async function publishListing() {
 }
 
 async function publishListingAfterPayment(reference) {
-  if (!pendingListingPayload || !supabaseClient || !currentUser) return;
-  const listing = { ...pendingListingPayload };
+  if (!pendingListingPayload || !supabaseClient || !currentUser || publishingDraft) return false;
+  const draft = pendingListingPayload;
+  const listing = { ...draft };
+  const snapshot = mediaSnapshot();
+  const user = currentUser;
   const phone = listing._phone || '';
   delete listing._phone;
-
   const button = document.querySelector('#screen-add .add-publish-bar .btn-primary');
+  publishingDraft = true;
   if (button) { button.disabled = true; button.textContent = 'Publishing…'; }
-
   try {
-    await supabaseClient.from('profiles').upsert({
-      id: currentUser.id,
-      full_name: currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || 'NestFind Member',
-      email: currentUser.email || '',
-      phone: phone || currentUser.user_metadata?.phone || ''
+    const profile = await supabaseClient.from('profiles').upsert({
+      id: user.id, full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'NestFind Member',
+      email: user.email || '', phone: phone || user.user_metadata?.phone || ''
     });
-
-    toast(videoFile ? 'Payment verified. Uploading property media…' : 'Payment verified. Publishing property…');
-    const { uploadedPhotos, uploadedVideo } = await uploadSelectedMedia();
-    listing.photos = [...uploadedPhotos, ...photoUrls];
+    assertMediaAccount(snapshot.userId, snapshot.draftVersion);
+    if (profile.error) throw profile.error;
+    toast('Uploading property media…');
+    const { uploadedPhotos, uploadedVideo } = await uploadSelectedMedia(snapshot);
+    listing.photos = [...uploadedPhotos, ...snapshot.urls];
     if (!listing.photos.length) throw new Error('Add at least one real property photo.');
     listing.video_url = uploadedVideo || '';
-
-    const { data, error } = await supabaseClient.rpc('publish_property_with_payment', {
-      p_reference: reference,
-      p_property: listing
-    });
+    const { data, error } = await supabaseClient.rpc('publish_property_with_payment', { p_reference: reference, p_property: listing });
+    assertMediaAccount(snapshot.userId, snapshot.draftVersion);
     if (error) throw error;
-
-    const row = data || listing;
-    const local = dbPropertyToApp(row);
-    userListings.unshift(local);
-    allProperties = [...userListings];
-    saveState();
+    if (!data?.id) throw new Error('Publication could not be confirmed. Please retry.');
+    const local = dbPropertyToApp(data);
+    allProperties = [local, ...allProperties.filter(item => String(item.id) !== String(local.id))];
+    userListings = [...allProperties];
     renderHome();
-    pendingListingPayload = null;
-    toast('Payment confirmed. Property published successfully.');
-    resetListingForm();
+    if (pendingListingPayload === draft) { pendingListingPayload = null; resetListingForm(); }
+    toast('Property published successfully.');
     showScreen('profile');
     return true;
-  } catch (err) {
-    console.error('NestFind publish error:', err);
-    toast('Your payment is saved. Fix the listing and retry without paying again: ' + (err.message || 'Database error'));
+  } catch (error) {
+    if (currentUser?.id === snapshot.userId && mediaDraftVersion === snapshot.draftVersion) toast('Your payment is saved. Retry without paying again: ' + (error.message || 'Publication failed.'));
     return false;
   } finally {
+    publishingDraft = false;
     if (button) { button.disabled = false; button.textContent = 'Publish Listing'; }
   }
 }
 
 function resetListingForm() {
+  clearMediaUploads();
   ['add-title','add-desc','add-location','add-price','add-phone'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
@@ -4797,13 +4840,31 @@ function showMyListings() {
   showScreen('list');
 }
 
-function showSaved() {
+function renderSavedProperties() {
+  const container = document.getElementById('list-content');
+  if (catalogState === 'loading' || savedPropertiesState === 'loading') {
+    container.innerHTML = '<div class="empty-state"><p>Loading saved properties…</p></div>';
+    return;
+  }
+  if (catalogState === 'error') {
+    container.innerHTML = '<div class="empty-state"><p>Could not load your saved properties.</p><button class="btn-outline" onclick="loadSupabaseProperties()">Try again</button></div>';
+    return;
+  }
   const saved = allProperties.filter(p => favorites.includes(p.id));
-  document.getElementById('list-title').textContent = 'Saved Properties';
-  document.getElementById('list-content').innerHTML = saved.length
+  const warning = savedPropertiesState === 'error' ? '<div class="empty-state"><p>Could not sync your saved list. Showing the last available copy.</p><button class="btn-outline" onclick="loadSavedProperties()">Retry sync</button></div>' : '';
+  container.innerHTML = warning + (saved.length
     ? '<div class="prop-list">' + saved.map(propListHTML).join('') + '</div>'
-    : '<div class="empty-state"><i data-lucide="heart"></i><p>No saved properties yet.</p></div>';
+    : '<div class="empty-state"><i data-lucide="heart"></i><p>' + (favorites.length ? 'Your saved listings are currently unavailable.' : 'No saved properties yet.') + '</p></div>');
+  refreshIcons();
+}
+function refreshSavedListIfOpen() {
+  if (document.getElementById('screen-list')?.classList.contains('active') && document.getElementById('list-title').textContent === 'Saved Properties') renderSavedProperties();
+}
+function showSaved() {
+  document.getElementById('list-title').textContent = 'Saved Properties';
   showScreen('list');
+  renderSavedProperties();
+  if (currentUser) loadSavedProperties();
 }
 
 async function syncAuthenticatedUser() {
@@ -4885,7 +4946,7 @@ function renderViewingSchedule() {
       ${v.message ? `<div class="viewing-card-meta">${escapeHtml(v.message)}</div>` : ''}
       <span class="viewing-card-status ${statusClass}">${escapeHtml(status)}</span>
       ${ownerActions}
-      ${!isOwner ? '<button type="button" class="report-btn" onclick="toast(\'Contact the owner through NestFind chat for changes.\')">Need to change?</button>' : ''}
+      ${!isOwner && ['Requested','Pending','Accepted'].includes(status) ? `<button type="button" class="btn-outline" data-viewing-action="cancel" data-viewing-id="${escapeHtml(requestId)}" style="margin-top:12px">Cancel viewing</button>` : ''}
     </div>`;
   }).join('');
 
@@ -4900,7 +4961,7 @@ function renderViewingSchedule() {
 
       const id = button.getAttribute('data-viewing-id');
       const action = button.getAttribute('data-viewing-action');
-      const nextStatus = action === 'accept' ? 'Accepted' : 'Declined';
+      const nextStatus = action === 'accept' ? 'Accepted' : action === 'cancel' ? 'Cancelled' : 'Declined';
 
       await updateViewingStatus(id, nextStatus);
     });
@@ -4957,7 +5018,7 @@ async function updateViewingStatus(requestId, status) {
     return;
   }
 
-  if (!['Accepted', 'Declined'].includes(status)) {
+  if (!['Accepted', 'Declined', 'Cancelled'].includes(status)) {
     toast('Invalid viewing status.');
     return;
   }
@@ -4998,8 +5059,9 @@ async function updateViewingStatus(requestId, status) {
     const propertyOwnerId = String(property?.ownerId || '');
     const userId = String(authenticatedUser.id);
 
-    if (requestOwnerId !== userId && propertyOwnerId !== userId) {
-      toast('Only the property owner can update this request.');
+    const allowed = status === 'Cancelled' ? String(request.requesterId) === userId : requestOwnerId === userId || propertyOwnerId === userId;
+    if (!allowed) {
+      toast('You can only update viewings connected to your account.');
       return;
     }
 
@@ -5018,6 +5080,7 @@ async function updateViewingStatus(requestId, status) {
       throw new Error('The request was not updated. Supabase did not return the updated row. Check the viewing_requests UPDATE policy.');
     }
 
+    if (String(currentUser?.id) !== userId) return;
     // Update local state immediately.
     const index = viewings.findIndex(v => String(v.id) === key);
     if (index >= 0) {
@@ -5033,9 +5096,7 @@ async function updateViewingStatus(requestId, status) {
     updateProfileCounts();
     renderViewingSchedule();
 
-    toast(status === 'Accepted'
-      ? 'Viewing request accepted successfully.'
-      : 'Viewing request declined successfully.');
+    toast(status === 'Accepted' ? 'Viewing request accepted.' : status === 'Cancelled' ? 'Viewing request cancelled.' : 'Viewing request declined.');
 
     // Confirm the new value from Supabase.
     await loadViewingRequests();
@@ -5089,12 +5150,15 @@ async function submitViewing() {
   if (String(p.ownerId) === String(currentUser.id)) { toast('You cannot request a viewing for your own property.'); return; }
   const duplicate = viewings.some(v => String(v.propertyId) === String(p.id) && String(v.requesterId || '') === String(currentUser.id) && String(v.date) === String(date) && String(v.time).slice(0,5) === String(time).slice(0,5) && !['Declined','Cancelled'].includes(String(v.status)));
   if (duplicate) { toast('You already requested this viewing time.'); return; }
+  const requestUserId = currentUser.id;
   const button = document.querySelector('#schedule-modal button[onclick="submitViewing()"]');
+  if (button?.disabled) return;
   if (button) { button.disabled = true; button.textContent = 'Sending...'; }
   try {
     const { data, error } = await supabaseClient.from('viewing_requests').insert({
       property_id:p.id, requester_id:currentUser.id, owner_id:p.ownerId, viewing_date:date, viewing_time:time, status:'Requested', notes:message || null
     }).select('id,property_id,requester_id,owner_id,viewing_date,viewing_time,status,notes,created_at').single();
+    if (currentUser?.id !== requestUserId) return;
     if (error) throw error;
     const v = { id:data.id, propertyId:data.property_id, propertyTitle:p.title, date:data.viewing_date, time:String(data.viewing_time || '').slice(0,5), message:data.notes || '', status:data.status || 'Requested', ownerId:data.owner_id, requesterId:data.requester_id, createdAt:data.created_at || '' };
     viewings = [v, ...viewings.filter(existing => String(existing.id) !== String(v.id))];
@@ -5579,9 +5643,10 @@ async function submitTrustReport() {
 }
 
 async function loadSupabaseProperties() {
-  if (!supabaseClient) { catalogState = 'error'; renderHome(); return; }
+  if (!supabaseClient) { catalogState = 'error'; renderHome(); refreshSavedListIfOpen(); return; }
   catalogState = 'loading';
   renderHome();
+  refreshSavedListIfOpen();
   try {
     const { data, error } = await supabaseClient
       .from('properties')
@@ -5602,7 +5667,7 @@ async function loadSupabaseProperties() {
     catalogState = 'error';
     renderHome();
     console.warn('Could not load properties:', err);
-  }
+  } finally { refreshSavedListIfOpen(); }
 }
 
 // ==================== INIT ====================
@@ -5636,6 +5701,6 @@ async function initNestFind() {
   refreshIcons();
 }
 </script>
-<script src="improvements.js?v=20261004-saved"></script>
+<script src="improvements.js?v=20261004-workflows"></script>
 </body>
 </html>
