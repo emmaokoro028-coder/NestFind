@@ -5,6 +5,8 @@ let searchFilters = { min: '', max: '', beds: '', propertyType: '', period: '' }
 let activeAccountKey = null;
 let premiumUntil = 0;
 let modalReturnFocus = null;
+let favoriteRevision = 0;
+const pendingFavorites = new Set();
 
 function refreshIcons() { window.lucide?.createIcons(); }
 function readStorage(key, fallback) {
@@ -21,6 +23,8 @@ function loadAccountState() {
   const key = accountStorageKey();
   if (key === activeAccountKey) return;
   activeAccountKey = key;
+  favoriteRevision++;
+  pendingFavorites.clear();
   stopViewingRefresh();
   stopRealtimeMessages();
   stopRealtimeNotifications();
@@ -46,7 +50,7 @@ function loadAccountState() {
 }
 async function refreshAccountData(userId) {
   if (!userId || currentUser?.id !== userId) return;
-  for (const load of [loadCurrentUserData, loadPremiumStatus, loadMessageAccessStatus, loadViewingRequests, loadRemoteConversations, loadNotifications]) {
+  for (const load of [loadCurrentUserData, loadSavedProperties, loadPremiumStatus, loadMessageAccessStatus, loadViewingRequests, loadRemoteConversations, loadNotifications]) {
     if (currentUser?.id !== userId) return;
     await load();
   }
@@ -54,6 +58,38 @@ async function refreshAccountData(userId) {
   startRealtimeMessages();
   startRealtimeNotifications();
   startRealtimeSupport();
+}
+function refreshSavedViews() {
+  saveState();
+  updateProfileCounts();
+  if (document.getElementById('screen-home').classList.contains('active')) renderHome();
+  if (document.getElementById('screen-search').classList.contains('active')) runSearch();
+  if (document.getElementById('screen-list').classList.contains('active') && document.getElementById('list-title').textContent === 'Saved Properties') showSaved();
+  refreshIcons();
+}
+async function loadSavedProperties() {
+  const userId = currentUser?.id;
+  const revision = favoriteRevision;
+  if (!userId || !supabaseClient || pendingFavorites.size) return;
+  try {
+    const migrationKey = 'nf_saved_synced_' + userId;
+    if (!readStorage(migrationKey, false)) {
+      const existing = favorites.filter(id => typeof id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id));
+      if (existing.length) {
+        const result = await supabaseClient.from('saved_properties').upsert(existing.map(property_id => ({ user_id: userId, property_id })), { onConflict: 'user_id,property_id', ignoreDuplicates: true });
+        if (result.error) throw result.error;
+      }
+      if (currentUser?.id !== userId || favoriteRevision !== revision) return;
+      writeStorage(migrationKey, true);
+    }
+    const { data, error } = await supabaseClient.from('saved_properties').select('property_id').eq('user_id', userId);
+    if (currentUser?.id !== userId || favoriteRevision !== revision) return;
+    if (error) throw error;
+    favorites = [...new Set((data || []).map(row => row.property_id))];
+    refreshSavedViews();
+  } catch (error) {
+    if (currentUser?.id === userId) toast('Could not sync saved properties. Showing this device’s last saved list.');
+  }
 }
 function isFutureViewing(date, time) {
   const value = new Date(date + 'T' + time).getTime();

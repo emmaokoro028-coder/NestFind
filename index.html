@@ -3445,24 +3445,39 @@ async function openChatFromDetail() {
 }
 
 // ==================== FAVORITES ====================
-function toggleFavorite(id, btn) {
+async function toggleFavorite(id, btn) {
   id = getProperty(id)?.id ?? id;
-  const idx = favorites.indexOf(id);
-  if (idx >= 0) {
-    favorites.splice(idx, 1);
-    if (btn) { btn.classList.remove('active'); btn.innerHTML = '<i data-lucide="heart"></i>'; }
-    toast('Removed from saved');
-  } else {
-    favorites.push(id);
-    if (btn) { btn.classList.add('active'); btn.innerHTML = '<i data-lucide="heart" fill="currentColor"></i>'; }
-    toast('Saved to favorites');
+  const userId = currentUser?.id;
+  const accountKey = accountStorageKey();
+  const operationKey = accountKey + ':' + id;
+  if (pendingFavorites.has(operationKey)) return;
+  const removing = favorites.includes(id);
+  pendingFavorites.add(operationKey);
+  favoriteRevision++;
+  if (btn) btn.disabled = true;
+  try {
+    if (userId) {
+      if (!supabaseClient) throw new Error('Connection unavailable');
+      const result = removing
+        ? await supabaseClient.from('saved_properties').delete().eq('user_id', userId).eq('property_id', id)
+        : await supabaseClient.from('saved_properties').upsert({ user_id: userId, property_id: id }, { onConflict: 'user_id,property_id', ignoreDuplicates: true });
+      if (result.error) throw result.error;
+    }
+    if (accountStorageKey() !== accountKey) return;
+    favorites = removing ? favorites.filter(value => value !== id) : [...new Set([...favorites, id])];
+    if (btn) {
+      btn.classList.toggle('active', !removing);
+      btn.innerHTML = removing ? '<i data-lucide="heart"></i>' : '<i data-lucide="heart" fill="currentColor"></i>';
+    }
+    refreshSavedViews();
+    toast(removing ? 'Removed from saved' : userId ? 'Saved to your account' : 'Saved on this device. Sign in to save to your account.');
+  } catch (error) {
+    if (accountStorageKey() === accountKey) toast('Could not update saved properties. Please try again.');
+  } finally {
+    pendingFavorites.delete(operationKey);
+    favoriteRevision++;
+    if (btn) btn.disabled = false;
   }
-  saveState();
-  refreshIcons();
-  updateProfileCounts();
-  if (document.getElementById('screen-home').classList.contains('active')) renderHome();
-  if (document.getElementById('screen-search').classList.contains('active')) runSearch();
-  if (document.getElementById('screen-list').classList.contains('active') && document.getElementById('list-title').textContent === 'Saved Properties') showSaved();
 }
 
 // ==================== MAP ====================

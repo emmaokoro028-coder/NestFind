@@ -120,3 +120,26 @@ test('failed verification retains the reference for recovery',async()=>{
  await s.run('retryPendingPayment()');assert.ok(s.storage.has('nf_pending_payment_test'));
  assert.match(s.element('toast').textContent,/saved-reference/);
 });
+
+test('signed-in favorites are stored remotely and failed deletes retain the saved item',async()=> {
+ const s=setup(); let saved;
+ s.client.from=table=>({upsert:async(row,options)=>{saved={table,row,options};return {error:null};},delete(){return this;},eq(){return this;},then(resolve){return Promise.resolve({error:{message:'offline'}}).then(resolve);}});
+ s.run('currentUser={id:"alice"}'); await s.run('toggleFavorite("p1")');
+ assert.equal(saved.table,'saved_properties');assert.equal(saved.row.user_id,'alice');assert.equal(saved.row.property_id,'p1');assert.equal(saved.options.ignoreDuplicates,true);
+ assert.equal(s.run('favorites[0]'),'p1');await s.run('toggleFavorite("p1")');assert.equal(s.run('favorites[0]'),'p1');assert.match(s.element('toast').textContent,/Could not update/);
+});
+test('remote favorites replace the cache and query only the signed-in account',async()=> {
+ const s=setup();let filter;
+ s.client.from=table=>({select(){assert.equal(table,'saved_properties');return this;},eq(key,value){filter=[key,value];return Promise.resolve({data:[{property_id:'cloud'}],error:null});}});
+ s.run('currentUser={id:"alice"};favorites=["old"]');await s.run('loadSavedProperties()');assert.deepEqual(filter,['user_id','alice']);assert.equal(s.run('JSON.stringify(favorites)'),'["cloud"]');
+});
+test('late favorite save cannot modify another account',async()=> {
+ const s=setup();let finish;
+ s.client.from=()=>({upsert:()=>new Promise(resolve=>{finish=resolve;})});
+ s.run('currentUser={id:"alice"}');const pending=s.run('toggleFavorite("private")');s.run('currentUser={id:"bob"};loadAccountState()');finish({error:null});await pending;assert.equal(s.run('favorites.length'),0);
+});
+test('duplicate favorite clicks issue one request',async()=> {
+ const s=setup();let finish,count=0;
+ s.client.from=()=>({upsert:()=>{count++;return new Promise(resolve=>{finish=resolve;});}});
+ s.run('currentUser={id:"alice"}');const pending=s.run('toggleFavorite("p1")');await s.run('toggleFavorite("p1")');assert.equal(count,1);finish({error:null});await pending;assert.equal(s.run('favorites.length'),1);
+});
