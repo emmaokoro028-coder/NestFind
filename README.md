@@ -43,7 +43,7 @@ The private database inspection found a different 30-day subscription system, mi
 
 ## Validation and remaining work
 
-34 app and payment-verifier checks pass. The inspected PostgreSQL schema, policies and triggers were reconstructed in a local PGlite database. Both migrations and `database-regression.sql` passed there: 3-day and expired trial behavior, paid permanent access, repeated payment/publication safety, profile privacy, denied admin escalation, valid viewings and message read updates. All synthetic fixtures were rolled back, leaving zero test users. This local validation does not replace a controlled production-schema check.
+50 app and payment-verifier checks pass. The inspected PostgreSQL schema, policies and triggers were reconstructed in a local PGlite database. Both migrations and `database-regression.sql` passed there: 3-day and expired trial behavior, paid permanent access, repeated payment/publication safety, profile privacy, denied admin escalation, valid viewings and message read updates. All synthetic fixtures were rolled back, leaving zero test users. This local validation does not replace a controlled production-schema check.
 
 After explicit owner approval, the combined migration/regression script passed against the production database inside a transaction ending with ROLLBACK. An additional restrictive viewing policy discovered during that check was corrected and included in both the local and production checks. The security and payment migrations were then committed, and the updated `verify-paystack-payment` Edge Function was deployed on 2026-10-04. No synthetic test users, messages, viewings or payments were retained.
 
@@ -53,3 +53,15 @@ Remaining payment setup:
 3. Check OTP, authenticated messaging/viewing/media flows with controlled test accounts, then complete Paystack's test-mode verification before enabling live payments.
 
 Existing customer records, payments, messages, viewings and uploads were preserved. The Paystack public key remains a placeholder. Signed-in favorites sync through saved_properties with account-scoped queries. Guest favorites stay on this device. Failed saves retain the existing selection; duplicate clicks and late account responses are guarded. Paystack setup is deferred at the owner’s request. Old shared browser-storage keys remain intact but do not identify sessions or provide access to private records.
+
+
+## Non-payment workflow completion — 2026-10-04
+
+- Read acknowledgements persist only for received messages actually displayed in the visible chat; failed requests retain unread status. Late replies cannot mark a new arrival or another account’s messages read. Conversation loading preserves live arrivals and offers retry.
+- Saved lists distinguish loading, network failures, unavailable listings and an empty list; refresh after the catalogue arrives and on returning to the app. Deleted legacy favorites no longer block migration. Saving was confirmed across the local preview and public app using separate browser storage origins.
+- Completed media uploads are reused on retry; failed video uploads resume using the same upload instance/path. Draft/account changes abort resumable uploads; listing submission uses a stable snapshot and checks profile/publication errors before reporting success. Media previews release old object URLs.
+- Support live echoes do not duplicate messages. Notification acknowledgement does not mark arrivals received during the request as read.
+- Requesters can cancel their own active viewing requests. `database-workflow-repair.sql` adds only that policy; existing restrictive policies and the immutable-details trigger remain in force.
+- `workflow-regression.sql` uses three temporary identities to exercise account privacy, saved-property retries/removal, two-way messaging, read status, viewing acceptance/cancellation, notifications and support permissions. It passed in local PostgreSQL-compatible tests and the production database with ROLLBACK. The separate cancellation policy was then committed.
+- Existing-account sign-in was verified with the owner. The signup email template contains the six-digit token. Actual new-account email delivery/verification still requires the owner’s fresh test signup; automated valid/expired-code handling passes.
+- Paystack configuration remains deferred. No payment was made, no customer messages were sent, and no listing was published during these checks. Actual large-file upload/publication with payment remains an end-to-end check for the payment setup phase; retry/cancellation behaviours are covered by controlled automated tests.
