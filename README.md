@@ -43,7 +43,7 @@ The private database inspection found a different 30-day subscription system, mi
 
 ## Validation and remaining work
 
-30 app and payment-verifier checks pass. The inspected PostgreSQL schema, policies and triggers were reconstructed in a local PGlite database. Both migrations and `database-regression.sql` passed there: 3-day and expired trial behavior, paid permanent access, repeated payment/publication safety, profile privacy, denied admin escalation, valid viewings and message read updates. All synthetic fixtures were rolled back, leaving zero test users. This local validation does not replace a controlled production-schema check.
+34 app and payment-verifier checks pass. The inspected PostgreSQL schema, policies and triggers were reconstructed in a local PGlite database. Both migrations and `database-regression.sql` passed there: 3-day and expired trial behavior, paid permanent access, repeated payment/publication safety, profile privacy, denied admin escalation, valid viewings and message read updates. All synthetic fixtures were rolled back, leaving zero test users. This local validation does not replace a controlled production-schema check.
 
 After explicit owner approval, the combined migration/regression script passed against the production database inside a transaction ending with ROLLBACK. An additional restrictive viewing policy discovered during that check was corrected and included in both the local and production checks. The security and payment migrations were then committed, and the updated `verify-paystack-payment` Edge Function was deployed on 2026-10-04. No synthetic test users, messages, viewings or payments were retained.
 
@@ -52,4 +52,4 @@ Remaining payment setup:
 2. Deploy `index.html`, `improvements.js`, and `improvements.css` together from the live branch after updating the review PR. Do not deploy the new app before its database/Edge Function dependencies.
 3. Check OTP, authenticated messaging/viewing/media flows with controlled test accounts, then complete Paystack's test-mode verification before enabling live payments.
 
-Existing customer records, payments, messages, viewings and uploads were preserved. The Paystack public key remains a placeholder. Favorites are local to each account on this browser. Old shared browser-storage keys remain intact but do not identify sessions or provide access to private records.
+Existing customer records, payments, messages, viewings and uploads were preserved. The Paystack public key remains a placeholder. Signed-in favorites sync through saved_properties with account-scoped queries. Guest favorites stay on this device. Failed saves retain the existing selection; duplicate clicks and late account responses are guarded. Paystack setup is deferred at the owner’s request. Old shared browser-storage keys remain intact but do not identify sessions or provide access to private records.
