@@ -7,8 +7,10 @@ let premiumUntil = 0;
 let modalReturnFocus = null;
 let favoriteRevision = 0;
 const pendingFavorites = new Set();
+let savedPropertiesState = 'ready';
+let savedPropertiesRequest = null;
 
-function refreshIcons() { window.lucide?.createIcons(); }
+function refreshIcons() { window.lucide?.createIcons(); enhanceAccessibility(); }
 function readStorage(key, fallback) {
   try { const value = JSON.parse(localStorage.getItem(key)); return value ?? fallback; }
   catch { return fallback; }
@@ -25,6 +27,8 @@ function loadAccountState() {
   activeAccountKey = key;
   favoriteRevision++;
   pendingFavorites.clear();
+  savedPropertiesState = currentUser ? 'loading' : 'ready';
+  savedPropertiesRequest = null;
   stopViewingRefresh();
   stopRealtimeMessages();
   stopRealtimeNotifications();
@@ -64,32 +68,55 @@ function refreshSavedViews() {
   updateProfileCounts();
   if (document.getElementById('screen-home').classList.contains('active')) renderHome();
   if (document.getElementById('screen-search').classList.contains('active')) runSearch();
-  if (document.getElementById('screen-list').classList.contains('active') && document.getElementById('list-title').textContent === 'Saved Properties') showSaved();
+  refreshSavedListIfOpen();
   refreshIcons();
 }
 async function loadSavedProperties() {
   const userId = currentUser?.id;
-  const revision = favoriteRevision;
   if (!userId || !supabaseClient || pendingFavorites.size) return;
-  try {
-    const migrationKey = 'nf_saved_synced_' + userId;
-    if (!readStorage(migrationKey, false)) {
-      const existing = favorites.filter(id => typeof id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id));
-      if (existing.length) {
-        const result = await supabaseClient.from('saved_properties').upsert(existing.map(property_id => ({ user_id: userId, property_id })), { onConflict: 'user_id,property_id', ignoreDuplicates: true });
-        if (result.error) throw result.error;
+  if (savedPropertiesRequest?.userId === userId) return savedPropertiesRequest.promise;
+  const revision = favoriteRevision;
+  const task = { userId, promise: null };
+  savedPropertiesRequest = task;
+  savedPropertiesState = 'loading';
+  refreshSavedListIfOpen();
+  task.promise = (async () => {
+    try {
+      const migrationKey = 'nf_saved_synced_' + userId;
+      if (!readStorage(migrationKey, false)) {
+        const existing = favorites.filter(id => typeof id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id));
+        if (existing.length) {
+          // Deleted listings must not make every future sync fail its foreign key check.
+          const available = await supabaseClient.from('properties').select('id').in('id', existing);
+          if (available.error) throw available.error;
+          if (currentUser?.id !== userId || favoriteRevision !== revision) return;
+          const rows = (available.data || []).map(row => ({ user_id: userId, property_id: row.id }));
+          if (rows.length) {
+            const result = await supabaseClient.from('saved_properties').upsert(rows, { onConflict: 'user_id,property_id', ignoreDuplicates: true });
+            if (result.error) throw result.error;
+          }
+        }
+        if (currentUser?.id !== userId || favoriteRevision !== revision) return;
+        writeStorage(migrationKey, true);
       }
+      const { data, error } = await supabaseClient.from('saved_properties').select('property_id').eq('user_id', userId);
       if (currentUser?.id !== userId || favoriteRevision !== revision) return;
-      writeStorage(migrationKey, true);
+      if (error) throw error;
+      favorites = [...new Set((data || []).map(row => row.property_id))];
+      savedPropertiesState = 'ready';
+      refreshSavedViews();
+    } catch (error) {
+      if (currentUser?.id === userId && favoriteRevision === revision) {
+        savedPropertiesState = 'error';
+        refreshSavedListIfOpen();
+        toast('Could not sync saved properties. Showing this device’s last saved list.');
+      }
+    } finally {
+      if (savedPropertiesRequest === task) savedPropertiesRequest = null;
+      if (currentUser?.id === userId && savedPropertiesState === 'loading') { savedPropertiesState = 'ready'; refreshSavedListIfOpen(); }
     }
-    const { data, error } = await supabaseClient.from('saved_properties').select('property_id').eq('user_id', userId);
-    if (currentUser?.id !== userId || favoriteRevision !== revision) return;
-    if (error) throw error;
-    favorites = [...new Set((data || []).map(row => row.property_id))];
-    refreshSavedViews();
-  } catch (error) {
-    if (currentUser?.id === userId) toast('Could not sync saved properties. Showing this device’s last saved list.');
-  }
+  })();
+  return task.promise;
 }
 function isFutureViewing(date, time) {
   const value = new Date(date + 'T' + time).getTime();
@@ -217,6 +244,12 @@ document.addEventListener('keydown', event => {
   if ((event.key === 'Enter' || event.key === ' ') && event.target.matches('[role="button"][onclick]')) { event.preventDefault(); event.target.click(); }
 });
 document.addEventListener('click', () => enhanceAccessibility());
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') return;
+  const conv = conversations.find(item => String(item.id) === String(currentChatId));
+  if (conv && conversationIsVisible(conv.id)) loadRemoteMessagesForConversation(conv);
+  if (currentUser) loadSavedProperties();
+});
 loadAccountState();
 enhanceAccessibility();
 if (readStorage('nf_welcomed', false)) showScreen('home');
