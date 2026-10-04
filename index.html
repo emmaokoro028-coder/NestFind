@@ -3493,7 +3493,7 @@ async function toggleFavorite(id, btn) {
     if (accountStorageKey() === accountKey) toast('Could not update saved properties. Please try again.');
   } finally {
     pendingFavorites.delete(operationKey);
-    favoriteRevision++;
+    if (accountStorageKey() === accountKey) favoriteRevision++;
     if (btn) btn.disabled = false;
   }
 }
